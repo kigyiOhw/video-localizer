@@ -1,0 +1,4 @@
+- [Python 环境](memory/python-env.md) — Python 3.14 路径、pip 版本、HF_HOME 位置
+- [硬件配置](memory/hardware-config.md) — i9-13900H / 64GB RAM / RTX 4060 8GB / faster-whisper 推荐参数
+- [项目决策](memory/project-decisions.md) — 技术选型、架构模式、开发阶段
+- [磁盘布局](memory/disk-layout.md) — D/E/F 盘用途划分

@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Video-Localizer — 首页{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <h1>🎬 Video-Localizer</h1>
+    <p class="subtitle">AI 驱动的视频字幕与配音工具</p>
+    <p class="desc">
+        自动语音识别 → 字幕生成 → 翻译 → 语音合成 → 封装<br>
+        支持 Whisper ASR、LLM 翻译、Edge-TTS / XTTS 配音
+    </p>
+</section>
+
+<section class="status-card">
+    <h2>系统状态</h2>
+    <div class="status-grid"
+         hx-get="/status"
+         hx-trigger="load"
+         hx-swap="innerHTML">
+        <span class="loading">加载中…</span>
+    </div>
+</section>
+
+<section class="features">
+    <h2>功能模块</h2>
+    <div class="card-grid">
+        <div class="card">
+            <h3>📋 字幕管理</h3>
+            <p>提取、添加、切换软字幕<br>格式转换 SRT ↔ ASS ↔ WebVTT</p>
+            <span class="badge">Phase 1</span>
+        </div>
+        <div class="card">
+            <h3>🎤 语音识别</h3>
+            <p>Whisper 本地 ASR<br>VAD 过滤静音，减少幻觉</p>
+            <span class="badge">Phase 2</span>
+        </div>
+        <div class="card">
+            <h3>🌐 翻译</h3>
+            <p>LLM / DeepL 多语翻译<br>支持本地和云端引擎</p>
+            <span class="badge">Phase 2</span>
+        </div>
+        <div class="card">
+            <h3>🔊 语音合成</h3>
+            <p>Edge-TTS / XTTS 配音<br>自动音频对齐</p>
+            <span class="badge">Phase 3</span>
+        </div>
+    </div>
+</section>
+{% endblock %}

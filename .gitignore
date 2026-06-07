@@ -1,0 +1,75 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+
+# Virtual Environment
+venv/
+env/
+.venv/
+*.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+*.bak
+
+# Media temp files
+temp/
+tmp/
+*.wav
+*.mp3
+*.m4a
+!test/fixtures/*.mp3
+!test/fixtures/*.wav
+
+# Model files (too large)
+models/
+*.bin
+*.pt
+*.pth
+*.onnx
+*.caffemodel
+
+# Claude Code personal settings
+.claude/settings.json
+.claude/settings.local.json
+.claude/plans/
+.claude/workflows/
+.claude/skills/
+
+# Claude Code project memory (may contain personal info)
+memory/
+
+# Environment config
+.env
+.env.local
+config/settings.local.yaml

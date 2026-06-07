@@ -1,0 +1,94 @@
+# ---------------------------------------------------------------------------
+# Default settings — committed to git (no personal paths or hardware info)
+# Override locally in config/settings.local.yaml (gitignored)
+# ---------------------------------------------------------------------------
+
+paths:
+  model_root: /models
+  hf_cache: /models/huggingface
+  media_input: /media/input
+  media_output: /media/output
+  temp_dir: /media/temp
+
+ffmpeg:
+  executable: ffmpeg
+
+subtitle:
+  default_language: eng
+  default_format: srt
+
+asr:
+  engine: whisper_local
+  model_size: medium
+  device: cpu
+  compute_type: int8
+  beam_size: 5
+  vad_filter: true
+  language: auto
+
+tts:
+  engine: edge_tts
+
+translate:
+  engine: none
+
+# ---------------------------------------------------------------------------
+# 5-tier hardware profiles — auto-selected by VRAM at startup
+# Each profile overrides the base asr / tts / translate sections above.
+# ---------------------------------------------------------------------------
+profiles:
+  gpu_ultra:      # VRAM >= 16 GB  (RTX 4090 / 5090 class)
+    asr:
+      model_size: large-v3-turbo
+      device: cuda
+      compute_type: float16
+    tts:
+      engine: xtts
+    translate:
+      engine: llm_local
+
+  gpu_high:       # VRAM 8-16 GB  (RTX 4070 / 5070 class)
+    asr:
+      model_size: large-v3
+      device: cuda
+      compute_type: int8_float16
+    tts:
+      engine: edge_tts
+    translate:
+      engine: llm
+
+  gpu_medium:     # VRAM 4-8 GB  (RTX 4060 / 3060 class)
+    asr:
+      model_size: medium
+      device: cuda
+      compute_type: int8
+    tts:
+      engine: edge_tts
+    translate:
+      engine: llm
+
+  gpu_low:        # VRAM 2-4 GB
+    asr:
+      model_size: small
+      device: cuda
+      compute_type: int8
+    tts:
+      engine: edge_tts
+    translate:
+      engine: none
+
+  cpu:            # no usable GPU
+    asr:
+      model_size: tiny
+      device: cpu
+      compute_type: int8
+    tts:
+      engine: edge_tts
+    translate:
+      engine: none
+
+# Engine fallback chains — order defines priority when the primary is unavailable
+fallback:
+  asr: [whisper_local, whisper_api, none]
+  tts: [xtts, edge_tts, none]
+  translate: [llm_local, llm, none]

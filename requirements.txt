@@ -1,0 +1,37 @@
+# Web framework
+fastapi>=0.115
+uvicorn[standard]>=0.34
+python-multipart>=0.0.20
+
+# HTTP client (GPU Worker calls)
+httpx>=0.28
+
+# Templates
+jinja2>=3.1
+
+# Config
+pyyaml>=6.0
+python-dotenv>=1.1
+
+# System detection
+psutil>=7.0
+
+# FFmpeg bindings
+ffmpeg-python>=0.2
+
+# Audio processing
+pydub>=0.25
+
+# Subtitle parsing
+pysrt>=1.1
+
+# ASR (local Whisper via CTranslate2)
+faster-whisper>=1.1
+silero-vad>=5.1
+
+# TTS
+edge-tts>=6.1
+
+# Testing
+pytest>=8.3
+httpx  # TestClient support

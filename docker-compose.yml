@@ -1,0 +1,17 @@
+services:
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./:/app
+      - ${MEDIA_ROOT:-./media}:/media
+      - ${MODELS_ROOT:-./models}:/models:ro
+    environment:
+      - HF_HOME=/models/huggingface
+      - MEDIA_INPUT=/media/input
+      - MEDIA_OUTPUT=/media/output
+      - TEMP_DIR=/media/temp
+      - GPU_WORKER_URL=http://host.docker.internal:9001
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

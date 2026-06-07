@@ -1,0 +1,24 @@
+<div class="stat-item">
+    <span class="stat-label">状态</span>
+    <span class="stat-value ok">● 运行中</span>
+</div>
+<div class="stat-item">
+    <span class="stat-label">配置档</span>
+    <span class="stat-value">{{ selected_profile }}</span>
+</div>
+<div class="stat-item">
+    <span class="stat-label">ASR 引擎</span>
+    <span class="stat-value">{{ asr.engine }} / {{ asr.model_size }}</span>
+</div>
+<div class="stat-item">
+    <span class="stat-label">ASR 设备</span>
+    <span class="stat-value">{{ asr.device }} ({{ asr.compute_type }})</span>
+</div>
+<div class="stat-item">
+    <span class="stat-label">TTS 引擎</span>
+    <span class="stat-value">{{ tts.engine }}</span>
+</div>
+<div class="stat-item">
+    <span class="stat-label">翻译引擎</span>
+    <span class="stat-value">{{ translate.engine }}</span>
+</div>
