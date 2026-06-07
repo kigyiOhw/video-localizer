@@ -20,7 +20,7 @@
 
 ```
 方式一 (默认): docker compose up -d
-方式二:        python app.py  (需 Python 3.13+ + FFmpeg)
+方式二:        python app.py  (需 Python 3.14+ + FFmpeg)
 
 ┌─ Docker Container (python:3.13-slim + FFmpeg) ─────┐
 │  FastAPI (:8000) + Jinja2 + HTMX                     │
@@ -101,7 +101,7 @@ Stage 3 ──→ Stage 9 → Stage 10 → Stage 11
 
 | 输出 | 说明 |
 |------|------|
-| `Dockerfile` | python:3.13-slim + FFmpeg + 项目依赖 |
+| `Dockerfile` | python:3.14-slim + FFmpeg + 项目依赖 |
 | `docker-compose.yml` | web 服务 + volume 挂载 + `.env` 变量 |
 | `.env.example` | 环境变量说明 (提交 Git) |
 | `.env` | 个人环境变量 (gitignored) |
@@ -110,8 +110,8 @@ Stage 3 ──→ Stage 9 → Stage 10 → Stage 11
 | `config/settings.yaml` | 通用默认值 (提交 Git, 5 档 profiles: ultra/high/medium/low/cpu) |
 | `config/settings.local.yaml` | 个人覆盖 (gitignored) |
 | `app.py` | FastAPI + Jinja2 + 静态文件 |
-| `templates/base.html` + `index.html` | 基础布局 + 首页 |
-| `static/css/style.css` | 基础样式 |
+| `web/templates/base.html` + `index.html` | 基础布局 + 首页 |
+| `web/static/css/style.css` | 基础样式 |
 | `requirements.txt` | 完整依赖清单 (含 fastapi, uvicorn, httpx 等) |
 
 **验证**: `docker compose up -d` → `localhost:8000` 显示首页，`/docs` 显示 Swagger
@@ -124,17 +124,17 @@ Stage 3 ──→ Stage 9 → Stage 10 → Stage 11
 
 | 层 | 产出 |
 |----|------|
-| `core/` | 核心函数 (probe, extract, mux) |
-| `api/` | REST 端点 (薄封装，调核心函数) |
-| `templates/` | Web 页面 (表单 + 结果展示) |
+| `processing/core/` | 核心函数 (probe, extract, mux) |
+| `web/api/` | REST 端点 (薄封装，调核心函数) |
+| `web/templates/` | Web 页面 (表单 + 结果展示) |
 | `tests/` | pytest 单元测试 |
 
 ### Stage 7: 音频轨管理 + 音画同步 ← 新增
 
-**核心模块**: `core/mux.py` (追加), `core/sync.py` (新增)
+**核心模块**: `processing/core/mux.py` (追加), `processing/core/sync.py` (新增)
 
 ```python
-# core/sync.py
+# processing/core/sync.py
 def adjust_audio_sync(video, track_index, offset_seconds, output)
     → 整体偏移 (正=延后, 负=提前), FFmpeg -itoffset
 
@@ -171,62 +171,62 @@ video-localizer/
 ├── Dockerfile
 ├── docker-compose.yml
 ├── requirements.txt
-├── worker.py                 # GPU Worker (Stage 9 起)
-├── app.py                    # FastAPI 入口
+├── worker.py                       # GPU Worker (Stage 9 起)
+├── app.py                          # FastAPI 入口
 ├── __init__.py
 │
-├── api/                      # REST 路由 (薄层)
+├── engines/                        # AI 引擎 (策略模式: engine.py ABC + 实现)
 │   ├── __init__.py
-│   ├── probe.py
-│   ├── extract.py
-│   ├── subtitle.py
-│   ├── audio.py
-│   ├── asr.py
-│   ├── translate.py
-│   ├── tts.py
-│   └── pipeline.py
+│   ├── asr/
+│   │   ├── engine.py
+│   │   └── whisper_local.py
+│   ├── tts/
+│   │   ├── engine.py
+│   │   ├── edge_tts.py
+│   │   └── align.py
+│   └── translate/
+│       ├── engine.py
+│       └── llm.py
 │
-├── core/                     # FFmpeg 操作
-│   ├── probe.py
-│   ├── extract.py
-│   ├── mux.py
-│   ├── burn.py
-│   └── sync.py               ← 新增
+├── processing/                     # 媒体处理
+│   ├── __init__.py
+│   ├── core/                       # FFmpeg 操作
+│   │   ├── probe.py
+│   │   ├── extract.py
+│   │   ├── mux.py
+│   │   ├── burn.py
+│   │   └── sync.py
+│   ├── subtitle/                   # 字幕处理
+│   │   ├── srt.py
+│   │   ├── ass.py
+│   │   ├── convert.py
+│   │   └── generator.py
+│   └── pipeline/                   # 端到端流程
+│       ├── switch_track.py
+│       ├── add_subtitle.py
+│       └── add_dub.py
 │
-├── asr/                      # 语音识别
-│   ├── engine.py
-│   └── whisper_local.py
-│
-├── tts/                      # 语音合成
-│   ├── engine.py
-│   ├── edge_tts.py
-│   └── align.py
-│
-├── translate/                # 翻译
-│   ├── engine.py
-│   └── llm.py
-│
-├── subtitle/                 # 字幕处理
-│   ├── srt.py
-│   ├── ass.py
-│   ├── convert.py
-│   └── generator.py
-│
-├── pipeline/                 # 端到端流程
-│   ├── switch_track.py
-│   ├── add_subtitle.py
-│   └── add_dub.py
+├── web/                            # Web 层
+│   ├── __init__.py
+│   ├── api/                        # REST 路由 (薄层)
+│   │   ├── __init__.py
+│   │   ├── probe.py
+│   │   ├── extract.py
+│   │   ├── subtitle.py
+│   │   ├── audio.py
+│   │   ├── asr.py
+│   │   ├── translate.py
+│   │   ├── tts.py
+│   │   └── pipeline.py
+│   ├── templates/                  # Jinja2 页面
+│   │   ├── base.html
+│   │   └── index.html  (+ 后续按 Stage 增加)
+│   └── static/
+│       └── css/style.css
 │
 ├── config/
 │   ├── __init__.py
 │   └── settings.yaml
-│
-├── templates/                # Jinja2 页面
-│   ├── base.html
-│   └── index.html  (+ 后续按 Stage 增加)
-│
-├── static/
-│   └── css/style.css
 │
 └── tests/
     ├── conftest.py
@@ -239,7 +239,7 @@ video-localizer/
 
 | 层级 | 工具 | 内容 |
 |------|------|------|
-| 单元测试 | pytest | core/asr/tts 模块，mock 外部依赖 |
+| 单元测试 | pytest | processing/core, engines/asr, engines/tts 模块，mock 外部依赖 |
 | API 测试 | httpx + pytest | 每个端点：正常 / 边界 / 错误 |
 | E2E | 手动 | Docker 容器内浏览器操作完整流程 |
 
@@ -265,7 +265,7 @@ docs/
 
 | 风险 | 缓解 |
 |------|------|
-| python:3.14 基础镜像不存在 | 用 3.13-slim，差异小 (仅 `audioop` 问题，3.13 仍内置) |
+| Python 3.14 依赖兼容性 | 部分包可能尚无 cp314 wheel；优先验证 faster-whisper, ctranslate2, pydub |
 | 容器内 FFmpeg 版本差异 | 固定 FFmpeg 版本安装，与宿主机解耦 |
 | Windows 路径挂载 | Docker Desktop 自动转换，`E:\Media` → `/media` |
 | GPU Worker 通信延迟 | 同宿主机 localhost，延迟可忽略 |

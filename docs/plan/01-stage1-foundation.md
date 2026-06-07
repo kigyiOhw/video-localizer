@@ -1,6 +1,6 @@
 # Stage 1: Web 框架与配置系统
 
-> 状态: 规划中 | 预计代码量: ~500 行
+> 状态: ✅ 已完成 (2026-06-07) | 实际代码量: ~340 行
 
 ## 1. 设计目标
 
@@ -21,7 +21,7 @@
 ┌─ 方式一: Docker (默认) ─────────────────────────────┐
 │ docker compose up -d                                  │
 │                                                       │
-│ Container (python:3.13-slim + FFmpeg)                 │
+│ Container (python:3.14-slim + FFmpeg)                 │
 │ ├── uvicorn app:app --reload  (:8000)                 │
 │ ├── 挂载: ./:/app, <media>:/media, <models>:/models   │
 │ └── 无 GPU                                            │
@@ -35,7 +35,7 @@
 │ python app.py                    → :8000              │
 │ python worker.py (Stage 9 起)    → :9001              │
 │                                                       │
-│ 前提: 系统已安装 Python 3.13+ 和 FFmpeg               │
+│ 前提: 系统已安装 Python 3.14+ 和 FFmpeg               │
 └───────────────────────────────────────────────────────┘
 ```
 
@@ -57,9 +57,9 @@ video-localizer/
 │   ├── settings.yaml          # 通用默认 (提交 Git)
 │   └── settings.local.yaml    # 个人覆盖 (gitignored)
 │
-├── api/__init__.py
-├── templates/{base.html, index.html}
-├── static/css/style.css
+├── web/api/__init__.py
+├── web/templates/{base.html, index.html}
+├── web/static/css/style.css
 ├── tests/{__init__.py, conftest.py, test_config.py, test_requirements.py}
 └── 8 个空包标记
 ```
@@ -287,13 +287,13 @@ def startup():
 @app.get("/api/health")     # 健康检查 + 配置摘要
 ```
 
-### 4.6 首页 (`templates/index.html`)
+### 4.6 首页 (`web/templates/index.html`)
 
 功能入口卡片 + 当前检测到的硬件信息和匹配的配置档。
 
 ### 4.7 Docker 配置
 
-- **Dockerfile**: `python:3.13-slim` + FFmpeg + pip install
+- **Dockerfile**: `python:3.14-slim` + FFmpeg + pip install
 - **docker-compose.yml**: volumes 从 `.env` 读取挂载路径
 - `.env.example` (提交): `MEDIA_DIR=./media`, `MODEL_DIR=./models`
 - `.env` (gitignored): 个人实际路径

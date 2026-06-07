@@ -3,6 +3,13 @@
 # Override locally in config/settings.local.yaml (gitignored)
 # ---------------------------------------------------------------------------
 
+# 最低运行要求（不满足 → 启动时退出）
+requirements:
+  min_ram_gb: 4
+  min_disk_free_gb: 10
+  min_python: "3.13"
+  required_tools: [ffmpeg, ffprobe]
+
 paths:
   model_root: /models
   hf_cache: /models/huggingface
@@ -12,9 +19,10 @@ paths:
 
 ffmpeg:
   executable: ffmpeg
+  ffprobe_executable: ffprobe
 
 subtitle:
-  default_language: eng
+  default_language: zho
   default_format: srt
 
 asr:

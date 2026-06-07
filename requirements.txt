@@ -32,6 +32,10 @@ silero-vad>=5.1
 # TTS
 edge-tts>=6.1
 
+# Local LLM (Stage 10+, gpu_ultra profile only)
+# 按需选装其一:
+#   ollama + openai (Ollama 本地服务)
+#   llama-cpp-python (本地 GGUF 推理)
+
 # Testing
 pytest>=8.3
-httpx  # TestClient support

@@ -1,4 +1,4 @@
-- [Python 环境](memory/python-env.md) — Python 3.14 路径、pip 版本、HF_HOME 位置
-- [硬件配置](memory/hardware-config.md) — i9-13900H / 64GB RAM / RTX 4060 8GB / faster-whisper 推荐参数
-- [项目决策](memory/project-decisions.md) — 技术选型、架构模式、开发阶段
-- [磁盘布局](memory/disk-layout.md) — D/E/F 盘用途划分
+- [Python 环境](.claude/memory/python-env.md) — Python 3.14 依赖策略，cp314 wheel 验证
+- [硬件配置档](.claude/memory/hardware-config.md) — 5 档 VRAM 自动检测与模型选择
+- [项目进度](.claude/memory/project-decisions.md) — Stage 1 完成，Stage 2 规划中，架构决策
+- [路径布局](.claude/memory/disk-layout.md) — Docker 卷挂载与容器路径映射

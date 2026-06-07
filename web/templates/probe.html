@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}流探测 — Video-Localizer{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <h1>📡 媒体流探测</h1>
+    <p class="subtitle">上传文件或指定路径，检测视频/音频/字幕流信息</p>
+    <p class="desc">
+        支持所有 FFmpeg 兼容格式：MP4、MKV、AVI、MOV、WebM、FLV 等
+    </p>
+</section>
+
+<section class="probe-panel">
+    <h2>选择媒体文件</h2>
+
+    <form id="probe-form"
+          hx-post="/api/probe"
+          hx-target="#probe-results"
+          hx-swap="innerHTML"
+          hx-indicator="#probe-spinner"
+          enctype="multipart/form-data">
+
+        <div class="probe-tabs">
+            <button type="button" class="probe-tab active" data-tab="upload">📁 上传文件</button>
+            <button type="button" class="probe-tab" data-tab="path">📂 服务器路径</button>
+        </div>
+
+        <div class="probe-tab-content" id="tab-upload">
+            <div class="file-drop-zone">
+                <input type="file" id="probe-file" name="file" accept="video/*,audio/*,.mkv,.mp4,.avi,.mov,.webm,.flv,.mp3,.aac,.wav,.flac">
+                <label for="probe-file" class="file-label">
+                    <span class="file-icon">📁</span>
+                    <span id="file-name">点击选择文件或拖放到此处</span>
+                </label>
+            </div>
+        </div>
+
+        <div class="probe-tab-content hidden" id="tab-path">
+            <div class="path-input-group">
+                <input type="text" id="probe-path" name="file_path"
+                       placeholder="例: /media/input/sample.mp4 或 C:\Videos\movie.mkv">
+                <p class="path-hint">绝对路径直接使用，相对路径基于 media_input 目录</p>
+            </div>
+        </div>
+
+        <div class="probe-actions">
+            <button type="submit" class="btn btn-primary">
+                开始探测
+            </button>
+            <span id="probe-spinner" class="htmx-indicator spinner"></span>
+        </div>
+    </form>
+</section>
+
+<section id="probe-results" class="probe-results">
+    {# HTMX 将探测结果填充到此 #}
+</section>
+{% endblock %}
+
+{% block head %}
+<script>
+    // Tab 切换
+    document.addEventListener('DOMContentLoaded', () => {
+        const tabs = document.querySelectorAll('.probe-tab');
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                const target = tab.dataset.tab;
+                document.querySelectorAll('.probe-tab-content').forEach(c => c.classList.add('hidden'));
+                document.getElementById('tab-' + target).classList.remove('hidden');
+                // 清除另一 tab 的输入
+                if (target === 'upload') {
+                    document.getElementById('probe-path').value = '';
+                } else {
+                    document.getElementById('probe-file').value = '';
+                    document.getElementById('file-name').textContent = '点击选择文件或拖放到此处';
+                }
+            });
+        });
+
+        // 文件选择反馈
+        const fileInput = document.getElementById('probe-file');
+        const fileName = document.getElementById('file-name');
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length > 0) {
+                fileName.textContent = fileInput.files[0].name;
+            } else {
+                fileName.textContent = '点击选择文件或拖放到此处';
+            }
+        });
+    });
+</script>
+{% endblock %}

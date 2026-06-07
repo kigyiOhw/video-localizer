@@ -68,12 +68,11 @@ def _detect_ram_gb() -> float:
 
 
 def _detect_gpu() -> tuple[bool, str | None, float]:
-    """检测 NVIDIA GPU 及 VRAM。
+    """检测 NVIDIA GPU 及 VRAM（多 GPU 时汇总总显存）。
 
     Returns:
         (has_cuda, cuda_version_str, vram_gb).
     """
-    # 尝试 nvidia-smi
     nvidia_smi = shutil.which("nvidia-smi")
     if nvidia_smi is None:
         logger.debug("nvidia-smi 未找到，假定无 GPU")
@@ -89,16 +88,27 @@ def _detect_gpu() -> tuple[bool, str | None, float]:
             logger.debug("nvidia-smi 返回非零: %s", result.stderr.strip())
             return False, None, 0.0
 
-        parts = result.stdout.strip().split(",")
-        if len(parts) < 2:
+        # 汇总所有 GPU 的显存
+        total_vram_mb = 0.0
+        driver_ver = None
+        for line in result.stdout.strip().split("\n"):
+            line = line.strip()
+            if not line:
+                continue
+            parts = line.split(",")
+            if len(parts) < 2:
+                continue
+            total_vram_mb += float(parts[0].strip())
+            if driver_ver is None:
+                driver_ver = parts[1].strip()
+
+        if driver_ver is None:
             logger.debug("nvidia-smi 输出格式异常: %s", result.stdout.strip())
             return False, None, 0.0
 
-        vram_mb = float(parts[0].strip())
-        driver_ver = parts[1].strip()
-        vram_gb = round(vram_mb / 1024.0, 1)
-
-        logger.debug("检测到 GPU: VRAM=%.1fGB driver=%s", vram_gb, driver_ver)
+        vram_gb = round(total_vram_mb / 1024.0, 1)
+        gpu_count = result.stdout.strip().count("\n") + 1
+        logger.debug("检测到 %d GPU: 总VRAM=%.1fGB driver=%s", gpu_count, vram_gb, driver_ver)
         return True, driver_ver, vram_gb
 
     except (subprocess.TimeoutExpired, FileNotFoundError, ValueError) as e:
@@ -137,16 +147,18 @@ def select_profile(vram_gb: float) -> str:
     return "cpu"
 
 
-def auto_configure(settings: "Settings") -> str:  # noqa: F821
+def auto_configure(settings: "Settings", info: dict[str, Any] | None = None) -> str:  # noqa: F821
     """自动检测硬件并应用对应配置档。
 
     Args:
         settings: Settings 实例（会被原地修改）。
+        info: 可选，预先检测的系统信息（避免重复检测）。
 
     Returns:
         选中的配置档名称。
     """
-    info = detect_system_info()
+    if info is None:
+        info = detect_system_info()
     profile_name = select_profile(info["vram_gb"])
     settings.apply_profile(profile_name)
     return profile_name
@@ -156,45 +168,57 @@ def auto_configure(settings: "Settings") -> str:  # noqa: F821
 # 最低配置检查
 # ---------------------------------------------------------------------------
 
-_MIN_RAM_GB = 2.0
-_MIN_DISK_GB = 1.0
 
-
-def check_minimum_requirements(settings: "Settings") -> list[str]:  # noqa: F821
+def check_minimum_requirements(
+    settings: "Settings",  # noqa: F821
+    info: dict[str, Any] | None = None,
+) -> list[str]:
     """检查是否满足最低运行要求。
 
     Args:
-        settings: Settings 实例。
+        settings: Settings 实例（读取 requirements 段阈值）。
+        info: 可选，预先检测的系统信息（避免重复检测 RAM/Disk）。
 
     Returns:
-        警告列表（空列表表示一切正常）。
+        失败项列表（空列表表示一切正常）。每一项是一条人类可读的错误描述。
     """
-    warnings: list[str] = []
+    failures: list[str] = []
+    req = settings.requirements
 
-    ram_gb = _detect_ram_gb()
-    if ram_gb < _MIN_RAM_GB:
-        warnings.append(f"内存不足: {ram_gb}GB < {_MIN_RAM_GB}GB (最低要求)")
+    if info is None:
+        info = detect_system_info()
 
-    # 检查 temp 目录所在磁盘空间
+    # 内存检查
+    ram_gb = info.get("ram_gb", _detect_ram_gb())
+    if ram_gb < req.min_ram_gb:
+        failures.append(f"内存不足: {ram_gb}GB < {req.min_ram_gb}GB (最低要求)")
+
+    # 磁盘空间检查
     temp_dir = Path(settings.paths.temp_dir)
-    # 确保父目录存在以进行磁盘检查
     check_dir = temp_dir if temp_dir.exists() else temp_dir.parent
     try:
         usage = shutil.disk_usage(check_dir)
         free_gb = usage.free / (1024 ** 3)
-        if free_gb < _MIN_DISK_GB:
-            warnings.append(f"磁盘空间不足: {free_gb:.1f}GB < {_MIN_DISK_GB}GB (最低要求)")
+        if free_gb < req.min_disk_free_gb:
+            failures.append(
+                f"磁盘空间不足: {free_gb:.1f}GB < {req.min_disk_free_gb}GB (最低要求)"
+            )
         logger.debug("磁盘可用空间: %.1f GB (%s)", free_gb, check_dir)
     except Exception:
         logger.debug("无法检测磁盘空间: %s", check_dir, exc_info=True)
 
-    if warnings:
-        for w in warnings:
-            logger.warning(w)
+    # 必需工具检查
+    for tool in req.required_tools:
+        if shutil.which(tool) is None:
+            failures.append(f"缺少必需工具: {tool}（请安装后重试）")
+
+    if failures:
+        for f in failures:
+            logger.error("✗ %s", f)
     else:
         logger.info("最低配置检查通过")
 
-    return warnings
+    return failures
 
 
 # ---------------------------------------------------------------------------

@@ -1,0 +1,213 @@
+{# HTMX fragment — 探测结果或错误信息 #}
+
+{% if error %}
+<div class="error-message">
+    <span class="error-icon">⚠️</span>
+    <div>
+        <strong>探测失败</strong>
+        <p>{{ error }}</p>
+    </div>
+</div>
+{% elif result %}
+<div class="probe-success">
+
+    {# 文件信息卡片 #}
+    <div class="format-card">
+        <h3>📦 文件信息</h3>
+        <div class="format-grid">
+            <div class="format-item">
+                <span class="format-label">文件名</span>
+                <span class="format-value" title="{{ result.format.filename }}">{{ safe_filename(result.format.filename) if safe_filename else result.format.filename }}</span>
+            </div>
+            <div class="format-item">
+                <span class="format-label">格式</span>
+                <span class="format-value">{{ result.format.format_long or result.format.format_name }}</span>
+            </div>
+            <div class="format-item">
+                <span class="format-label">大小</span>
+                <span class="format-value">{{ format_size(result.format.size_bytes) if format_size else "未知" }}</span>
+            </div>
+            <div class="format-item">
+                <span class="format-label">时长</span>
+                <span class="format-value">{{ format_duration(result.format.duration) if format_duration else "未知" }}</span>
+            </div>
+            <div class="format-item">
+                <span class="format-label">流总数</span>
+                <span class="format-value">{{ result.video_streams|length + result.audio_streams|length + result.subtitle_streams|length }}</span>
+            </div>
+            {% if result.format.bitrate %}
+            <div class="format-item">
+                <span class="format-label">总码率</span>
+                <span class="format-value">{{ (result.format.bitrate / 1000) | round | int }} kbps</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {# 视频流 #}
+    {% if result.video_streams %}
+    <div class="stream-section">
+        <h3>🎥 视频流 ({{ result.video_streams|length }})</h3>
+        {% for v in result.video_streams %}
+        <div class="stream-card video-stream">
+            <div class="stream-header">
+                <span class="stream-index">#{{ v.index }}</span>
+                <span class="stream-codec">{{ v.codec_long or v.codec }}</span>
+                {% if v.language %}
+                <span class="stream-lang">{{ v.language }}</span>
+                {% endif %}
+            </div>
+            <div class="stream-details">
+                <div class="detail">
+                    <span class="detail-label">分辨率</span>
+                    <span class="detail-value">{{ v.width }} × {{ v.height }}</span>
+                </div>
+                {% if v.fps_float %}
+                <div class="detail">
+                    <span class="detail-label">帧率</span>
+                    <span class="detail-value">{{ "%.2f" | format(v.fps_float) }} fps</span>
+                </div>
+                {% endif %}
+                <div class="detail">
+                    <span class="detail-label">像素格式</span>
+                    <span class="detail-value">{{ v.pix_fmt }}</span>
+                </div>
+                {% if v.bitrate %}
+                <div class="detail">
+                    <span class="detail-label">码率</span>
+                    <span class="detail-value">{{ (v.bitrate / 1000) | round | int }} kbps</span>
+                </div>
+                {% endif %}
+                {% if v.bit_depth and v.bit_depth != 8 %}
+                <div class="detail">
+                    <span class="detail-label">位深</span>
+                    <span class="detail-value">{{ v.bit_depth }} bit</span>
+                </div>
+                {% endif %}
+                {% if v.duration %}
+                <div class="detail">
+                    <span class="detail-label">时长</span>
+                    <span class="detail-value">{{ format_duration(v.duration) if format_duration else v.duration }}</span>
+                </div>
+                {% endif %}
+            </div>
+            {% if v.disposition and v.disposition.default %}
+            <div class="stream-badges">
+                <span class="stream-badge default">默认</span>
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {# 音频流 #}
+    {% if result.audio_streams %}
+    <div class="stream-section">
+        <h3>🔊 音频流 ({{ result.audio_streams|length }})</h3>
+        {% for a in result.audio_streams %}
+        <div class="stream-card audio-stream">
+            <div class="stream-header">
+                <span class="stream-index">#{{ a.index }}</span>
+                <span class="stream-codec">{{ a.codec_long or a.codec }}</span>
+                {% if a.language %}
+                <span class="stream-lang">{{ a.language }}</span>
+                {% endif %}
+            </div>
+            <div class="stream-details">
+                <div class="detail">
+                    <span class="detail-label">声道</span>
+                    <span class="detail-value">
+                        {% if a.channel_layout %}
+                        {{ a.channel_layout }} ({{ a.channels }}ch)
+                        {% elif a.channels == 1 %}
+                        单声道
+                        {% elif a.channels == 2 %}
+                        立体声
+                        {% elif a.channels == 6 %}
+                        5.1 环绕
+                        {% else %}
+                        {{ a.channels }}ch
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="detail">
+                    <span class="detail-label">采样率</span>
+                    <span class="detail-value">{{ "%.1f" | format(a.sample_rate / 1000) if a.sample_rate > 1000 else a.sample_rate }} kHz</span>
+                </div>
+                {% if a.bitrate %}
+                <div class="detail">
+                    <span class="detail-label">码率</span>
+                    <span class="detail-value">{{ (a.bitrate / 1000) | round | int }} kbps</span>
+                </div>
+                {% endif %}
+                {% if a.duration %}
+                <div class="detail">
+                    <span class="detail-label">时长</span>
+                    <span class="detail-value">{{ format_duration(a.duration) if format_duration else a.duration }}</span>
+                </div>
+                {% endif %}
+            </div>
+            {% if a.disposition and a.disposition.default %}
+            <div class="stream-badges">
+                <span class="stream-badge default">默认</span>
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {# 字幕流 #}
+    {% if result.subtitle_streams %}
+    <div class="stream-section">
+        <h3>📝 字幕流 ({{ result.subtitle_streams|length }})</h3>
+        {% for s in result.subtitle_streams %}
+        <div class="stream-card subtitle-stream">
+            <div class="stream-header">
+                <span class="stream-index">#{{ s.index }}</span>
+                <span class="stream-codec">{{ s.codec_long or s.codec }}</span>
+                {% if s.language %}
+                <span class="stream-lang">{{ s.language }}</span>
+                {% endif %}
+            </div>
+            <div class="stream-details">
+                {% if s.duration %}
+                <div class="detail">
+                    <span class="detail-label">时长</span>
+                    <span class="detail-value">{{ format_duration(s.duration) if format_duration else s.duration }}</span>
+                </div>
+                {% endif %}
+                <div class="detail">
+                    <span class="detail-label">类型</span>
+                    <span class="detail-value">
+                        {% if s.codec == "subrip" %}SRT 文本字幕
+                        {% elif s.codec == "ass" %}ASS 样式字幕
+                        {% elif s.codec == "webvtt" %}WebVTT
+                        {% elif s.codec == "mov_text" %}MP4 文本字幕
+                        {% elif s.codec == "dvd_subtitle" %}DVD 图形字幕
+                        {% elif s.codec == "hdmv_pgs_subtitle" %}蓝光 PGS 图形字幕
+                        {% else %}{{ s.codec }}
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+            {% if s.disposition and s.disposition.default %}
+            <div class="stream-badges">
+                <span class="stream-badge default">默认</span>
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {# 空流警告 #}
+    {% if not result.video_streams and not result.audio_streams and not result.subtitle_streams %}
+    <div class="empty-streams">
+        <p>😕 未检测到任何流。文件可能为空或不支持该格式。</p>
+    </div>
+    {% endif %}
+
+</div>
+{% endif %}

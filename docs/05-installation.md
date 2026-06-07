@@ -203,7 +203,7 @@ Docker 容器内路径固定，宿主机路径通过 `.env` 灵活配置：
 
 | 检查项 | 命令 | 预期结果 |
 |--------|------|----------|
-| Python 版本 | `python --version` | 3.13+ |
+| Python 版本 | `python --version` | 3.14+ |
 | pip 版本 | `pip --version` | 最新版 |
 | FFmpeg | `ffmpeg -version` | 显示版本 |
 | GPU 驱动 | `nvidia-smi` | 显示 GPU 型号和驱动版本 |

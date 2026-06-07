@@ -14,6 +14,12 @@ import yaml
 def sample_settings_yaml() -> dict[str, Any]:
     """返回一份最小有效的 settings.yaml 字典。"""
     return {
+        "requirements": {
+            "min_ram_gb": 1,
+            "min_disk_free_gb": 0.1,
+            "min_python": "3.13",
+            "required_tools": [],
+        },
         "paths": {
             "model_root": "/tmp/models",
             "hf_cache": "/tmp/hf",
@@ -22,7 +28,7 @@ def sample_settings_yaml() -> dict[str, Any]:
             "temp_dir": "/tmp/media/temp",
         },
         "ffmpeg": {"executable": "ffmpeg"},
-        "subtitle": {"default_language": "eng", "default_format": "srt"},
+        "subtitle": {"default_language": "zho", "default_format": "srt"},
         "asr": {
             "engine": "whisper_local",
             "model_size": "medium",

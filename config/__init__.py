@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from copy import deepcopy
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -90,13 +90,13 @@ class TranslateConfig:
 class SubtitleConfig:
     """字幕配置。"""
 
-    default_language: str = "eng"
+    default_language: str = "zho"
     default_format: str = "srt"
 
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> "SubtitleConfig":
         return cls(
-            default_language=d.get("default_language", "eng"),
+            default_language=d.get("default_language", "zho"),
             default_format=d.get("default_format", "srt"),
         )
 
@@ -106,10 +106,33 @@ class FFmpegConfig:
     """FFmpeg 配置。"""
 
     executable: str = "ffmpeg"
+    ffprobe_executable: str = "ffprobe"
 
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> "FFmpegConfig":
-        return cls(executable=d.get("executable", "ffmpeg"))
+        return cls(
+            executable=d.get("executable", "ffmpeg"),
+            ffprobe_executable=d.get("ffprobe_executable", "ffprobe"),
+        )
+
+
+@dataclass
+class RequirementsConfig:
+    """最低运行要求配置。"""
+
+    min_ram_gb: float = 4.0
+    min_disk_free_gb: float = 10.0
+    min_python: str = "3.13"
+    required_tools: list[str] = field(default_factory=lambda: ["ffmpeg", "ffprobe"])
+
+    @classmethod
+    def from_dict(cls, d: dict[str, Any]) -> "RequirementsConfig":
+        return cls(
+            min_ram_gb=float(d.get("min_ram_gb", 4.0)),
+            min_disk_free_gb=float(d.get("min_disk_free_gb", 10.0)),
+            min_python=d.get("min_python", "3.13"),
+            required_tools=d.get("required_tools", ["ffmpeg", "ffprobe"]),
+        )
 
 
 @dataclass
@@ -145,6 +168,7 @@ class Settings:
     tts: TTSConfig = field(default_factory=TTSConfig)
     translate: TranslateConfig = field(default_factory=TranslateConfig)
     fallback: FallbackConfig = field(default_factory=FallbackConfig)
+    requirements: RequirementsConfig = field(default_factory=RequirementsConfig)
     profiles: dict[str, dict[str, Any]] = field(default_factory=dict)
     selected_profile: str = "cpu"
 
@@ -195,6 +219,7 @@ class Settings:
             tts=TTSConfig.from_dict(d.get("tts", {})),
             translate=TranslateConfig.from_dict(d.get("translate", {})),
             fallback=FallbackConfig.from_dict(d.get("fallback", {})),
+            requirements=RequirementsConfig.from_dict(d.get("requirements", {})),
             profiles=deepcopy(d.get("profiles", {})),
         )
 
@@ -217,14 +242,14 @@ class Settings:
         self.selected_profile = profile_name
 
         if "asr" in profile:
-            self.asr = ASRConfig.from_dict({**self.asr.__dict__, **profile["asr"]})
+            self.asr = ASRConfig.from_dict({**asdict(self.asr), **profile["asr"]})
             logger.debug("  ASR: model=%s device=%s compute=%s",
                          self.asr.model_size, self.asr.device, self.asr.compute_type)
         if "tts" in profile:
-            self.tts = TTSConfig.from_dict({**self.tts.__dict__, **profile["tts"]})
+            self.tts = TTSConfig.from_dict({**asdict(self.tts), **profile["tts"]})
             logger.debug("  TTS: engine=%s", self.tts.engine)
         if "translate" in profile:
-            self.translate = TranslateConfig.from_dict({**self.translate.__dict__, **profile["translate"]})
+            self.translate = TranslateConfig.from_dict({**asdict(self.translate), **profile["translate"]})
             logger.debug("  Translate: engine=%s", self.translate.engine)
 
     # ------------------------------------------------------------------

@@ -1,0 +1,565 @@
+/* ---------------------------------------------------------------------------
+   Video-Localizer — 基础样式
+   --------------------------------------------------------------------------- */
+
+:root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface-hover: #242836;
+    --border: #2e3347;
+    --text: #e1e4ed;
+    --text-dim: #8b90a0;
+    --accent: #6c8aff;
+    --accent-dim: #4a62c0;
+    --green: #4ade80;
+    --yellow: #fbbf24;
+    --radius: 8px;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ---- Navbar ---- */
+
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 24px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+}
+
+.nav-brand a {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--text);
+    text-decoration: none;
+}
+
+.nav-version {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    margin-left: 8px;
+}
+
+.nav-links a {
+    color: var(--text-dim);
+    text-decoration: none;
+    margin-left: 20px;
+    font-size: 0.9rem;
+    transition: color 0.15s;
+}
+
+.nav-links a:hover {
+    color: var(--accent);
+}
+
+/* ---- Container ---- */
+
+.container {
+    max-width: 900px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 32px 20px;
+    flex: 1;
+}
+
+/* ---- Hero ---- */
+
+.hero {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.hero h1 {
+    font-size: 2.2rem;
+    margin-bottom: 8px;
+}
+
+.subtitle {
+    font-size: 1.1rem;
+    color: var(--accent);
+    margin-bottom: 12px;
+}
+
+.desc {
+    color: var(--text-dim);
+    font-size: 0.95rem;
+    line-height: 1.7;
+}
+
+/* ---- Status Card ---- */
+
+.status-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    margin-bottom: 40px;
+}
+
+.status-card h2 {
+    font-size: 1rem;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.status-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+}
+
+.stat-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.stat-label {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+}
+
+.stat-value {
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.stat-value.ok { color: var(--green); }
+.stat-value.warn { color: var(--yellow); }
+
+.loading {
+    color: var(--text-dim);
+    font-style: italic;
+}
+
+/* ---- Features ---- */
+
+.features h2 {
+    font-size: 1rem;
+    color: var(--text-dim);
+    margin-bottom: 16px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+}
+
+.card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    transition: border-color 0.15s, background 0.15s;
+}
+
+.card:hover {
+    border-color: var(--accent-dim);
+    background: var(--surface-hover);
+}
+
+.card h3 {
+    font-size: 0.95rem;
+    margin-bottom: 8px;
+}
+
+.card p {
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    line-height: 1.6;
+    margin-bottom: 10px;
+}
+
+.badge {
+    display: inline-block;
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: var(--accent-dim);
+    color: var(--text);
+}
+
+/* ---- Probe Panel ---- */
+
+.probe-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-bottom: 32px;
+}
+
+.probe-panel h2 {
+    font-size: 1rem;
+    color: var(--text-dim);
+    margin-bottom: 16px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Probe Tabs */
+
+.probe-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 16px;
+    border-bottom: 2px solid var(--border);
+}
+
+.probe-tab {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    padding: 8px 16px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: color 0.15s, border-color 0.15s;
+}
+
+.probe-tab:hover {
+    color: var(--text);
+}
+
+.probe-tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+}
+
+.probe-tab-content.hidden {
+    display: none;
+}
+
+/* File Drop Zone */
+
+.file-drop-zone {
+    margin-bottom: 16px;
+}
+
+.file-drop-zone input[type="file"] {
+    display: none;
+}
+
+.file-label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px;
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    text-align: center;
+}
+
+.file-label:hover {
+    border-color: var(--accent-dim);
+    background: var(--surface-hover);
+}
+
+.file-icon {
+    font-size: 2rem;
+    margin-bottom: 8px;
+}
+
+#file-name {
+    font-size: 0.9rem;
+    color: var(--text-dim);
+}
+
+/* Path Input */
+
+.path-input-group {
+    margin-bottom: 16px;
+}
+
+.path-input-group input[type="text"] {
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 0.9rem;
+    font-family: "SF Mono", "Consolas", monospace;
+}
+
+.path-input-group input[type="text"]:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+.path-hint {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    margin-top: 6px;
+}
+
+/* Probe Actions */
+
+.probe-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.btn {
+    padding: 10px 24px;
+    border: none;
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: background 0.15s;
+}
+
+.btn-primary {
+    background: var(--accent);
+    color: #fff;
+}
+
+.btn-primary:hover {
+    background: var(--accent-dim);
+}
+
+/* Spinner */
+
+.htmx-indicator {
+    display: none;
+}
+
+.htmx-request .htmx-indicator {
+    display: inline-block;
+}
+
+.spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ---- Probe Results ---- */
+
+.probe-results {
+    margin-bottom: 40px;
+}
+
+/* Error Message */
+
+.error-message {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    background: rgba(248, 113, 113, 0.1);
+    border: 1px solid rgba(248, 113, 113, 0.3);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    color: #fca5a5;
+}
+
+.error-message strong {
+    display: block;
+    margin-bottom: 4px;
+}
+
+.error-message p {
+    font-size: 0.9rem;
+    opacity: 0.9;
+}
+
+.error-icon {
+    font-size: 1.3rem;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+/* Format Card */
+
+.format-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    margin-bottom: 24px;
+}
+
+.format-card h3 {
+    font-size: 0.9rem;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.format-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+}
+
+.format-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.format-label {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+}
+
+.format-value {
+    font-size: 0.95rem;
+    word-break: break-all;
+}
+
+/* Stream Sections */
+
+.stream-section {
+    margin-bottom: 24px;
+}
+
+.stream-section h3 {
+    font-size: 0.9rem;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Stream Cards */
+
+.stream-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 18px;
+    margin-bottom: 10px;
+    transition: border-color 0.15s;
+}
+
+.stream-card.video-stream { border-left-color: var(--accent); }
+.stream-card.audio-stream { border-left-color: var(--green); }
+.stream-card.subtitle-stream { border-left-color: var(--yellow); }
+
+.stream-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.stream-index {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    font-family: "SF Mono", "Consolas", monospace;
+    background: var(--bg);
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.stream-codec {
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.stream-lang {
+    font-size: 0.75rem;
+    color: var(--accent);
+    background: rgba(108, 138, 255, 0.1);
+    padding: 2px 8px;
+    border-radius: 10px;
+    text-transform: uppercase;
+}
+
+.stream-details {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 8px;
+}
+
+.detail {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.detail-label {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+}
+
+.detail-value {
+    font-size: 0.88rem;
+}
+
+.stream-badges {
+    margin-top: 8px;
+}
+
+.stream-badge {
+    display: inline-block;
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: var(--accent-dim);
+    color: var(--text);
+}
+
+.stream-badge.default {
+    background: rgba(74, 222, 128, 0.15);
+    color: var(--green);
+}
+
+/* Empty Streams */
+
+.empty-streams {
+    text-align: center;
+    padding: 32px;
+    color: var(--text-dim);
+    font-size: 0.95rem;
+}
+
+/* ---- Footer ---- */
+
+.footer {
+    text-align: center;
+    padding: 20px;
+    border-top: 1px solid var(--border);
+    color: var(--text-dim);
+    font-size: 0.8rem;
+}

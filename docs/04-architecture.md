@@ -30,50 +30,54 @@
 
 ```
 video-localizer/
-├── core/                    # 核心视频处理
-│   ├── probe.py             # 视频流探测（ffprobe）
-│   ├── extract.py           # 提取音频/字幕/视频流
-│   ├── mux.py               # 封装（添加/移除流、设置默认轨）
-│   └── burn.py              # 烧录硬字幕
+├── engines/                 # AI 引擎层（策略模式）
+│   ├── asr/                 #   语音识别
+│   │   ├── engine.py        #   抽象接口
+│   │   ├── whisper_local.py #   faster-whisper 本地实现
+│   │   └── whisper_api.py   #   OpenAI Whisper API 实现
+│   ├── tts/                 #   语音合成
+│   │   ├── engine.py        #   抽象接口
+│   │   ├── edge_tts.py      #   Edge-TTS 实现
+│   │   ├── xtts.py          #   Coqui XTTS 实现
+│   │   └── align.py         #   音频时间轴对齐
+│   ├── translate/           #   翻译
+│   │   ├── engine.py        #   抽象接口
+│   │   ├── llm.py           #   LLM 翻译（OpenAI/DeepSeek/Ollama）
+│   │   └── deepl.py         #   DeepL API 实现
+│   └── __init__.py
 │
-├── asr/                     # 语音识别
-│   ├── engine.py            # ASR 引擎抽象接口
-│   ├── whisper_local.py     # faster-whisper 本地实现
-│   └── whisper_api.py       # OpenAI Whisper API 实现
+├── processing/              # 媒体处理层
+│   ├── core/                #   核心视频处理
+│   │   ├── probe.py         #   视频流探测（ffprobe）
+│   │   ├── extract.py       #   提取音频/字幕/视频流
+│   │   ├── mux.py           #   封装（添加/移除流、设置默认轨）
+│   │   └── burn.py          #   烧录硬字幕
+│   ├── subtitle/            #   字幕处理
+│   │   ├── srt.py           #   SRT 解析/生成/合并
+│   │   ├── ass.py           #   ASS 高级字幕
+│   │   └── convert.py       #   格式互转
+│   ├── pipeline/            #   完整工作流
+│   │   ├── add_subtitle.py  #   流程：ASR → 字幕 → 封装
+│   │   ├── add_dub.py       #   流程：ASR → 翻译 → TTS → 对齐 → 封装
+│   │   └── switch_track.py  #   流程：切换默认轨道
+│   └── __init__.py
 │
-├── tts/                     # 语音合成
-│   ├── engine.py            # TTS 引擎抽象接口
-│   ├── edge_tts.py          # Edge-TTS 实现
-│   ├── xtts.py              # Coqui XTTS 实现
-│   └── align.py             # 音频时间轴对齐
+├── web/                     # Web 表示层
+│   ├── api/                 #   FastAPI 路由
+│   ├── templates/           #   Jinja2 模板
+│   ├── static/              #   CSS/JS 静态资源
+│   └── __init__.py
 │
-├── translate/               # 翻译
-│   ├── engine.py            # 翻译引擎抽象接口
-│   ├── llm.py               # LLM 翻译（OpenAI/DeepSeek/Ollama）
-│   └── deepl.py             # DeepL API 实现
-│
-├── subtitle/                # 字幕处理
-│   ├── srt.py               # SRT 解析/生成/合并
-│   ├── ass.py               # ASS 高级字幕
-│   └── convert.py           # 格式互转
-│
-├── pipeline/                # 完整工作流
-│   ├── add_subtitle.py      # 流程：ASR → 字幕 → 封装
-│   ├── add_dub.py           # 流程：ASR → 翻译 → TTS → 对齐 → 封装
-│   └── switch_track.py      # 流程：切换默认轨道
-│
-├── gui/                     # 图形界面（后续）
-│   ├── main_window.py
-│   └── widgets/
-│
-├── config/                  # 配置
+├── config/                  # 配置（跨层引用）
 │   └── settings.yaml        # 全局配置
 │
+├── models/                  # ML 模型存储
+├── media/                   # 媒体文件 I/O
 ├── docs/                    # 项目文档
-│   └── ...
+├── tests/                   # 测试
 │
-└── tests/                   # 测试
-    └── ...
+├── app.py                   # FastAPI 入口
+└── __init__.py              # 版本号
 ```
 
 ---
@@ -201,4 +205,4 @@ MEDIA_ROOT=/path/to/your/media
 MODELS_ROOT=/path/to/your/models
 ```
 
-容器内固定路径：`/app`（代码）、`/media`（素材）、`/models`（模型）。也可直接运行 `python app.py`（需 Python 3.13+ + FFmpeg）。
+容器内固定路径：`/app`（代码）、`/media`（素材）、`/models`（模型）。也可直接运行 `python app.py`（需 Python 3.14+ + FFmpeg）。

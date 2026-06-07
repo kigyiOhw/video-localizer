@@ -67,7 +67,7 @@ models/
 .claude/skills/
 
 # Claude Code project memory (may contain personal info)
-memory/
+.claude/memory/
 
 # Environment config
 .env

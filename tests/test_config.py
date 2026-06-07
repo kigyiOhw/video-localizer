@@ -65,7 +65,7 @@ class TestTranslateConfig:
 class TestSubtitleConfig:
     def test_defaults(self) -> None:
         c = SubtitleConfig.from_dict({})
-        assert c.default_language == "eng"
+        assert c.default_language == "zho"
         assert c.default_format == "srt"
 
 

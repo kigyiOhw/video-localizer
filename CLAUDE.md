@@ -29,14 +29,18 @@ AI-powered video subtitle & audio track manager. Core workflow: extract audio �
 Layered design (see `docs/00-overview.md` for data flow diagrams):
 
 ```
-api/          → FastAPI REST endpoints (thin layer over core/ + asr/ + tts/ + translate/)
-templates/    → Jinja2 + HTMX server-rendered pages
-pipeline/     → End-to-end workflows (ASR→subtitles→mux, ASR→translate→TTS→mux, track switching)
-core/         → FFmpeg operations (probe, extract, mux, burn, sync)
-asr/          → Speech recognition engines (engine.py abstract base + whisper_local / whisper_api)
-tts/          → TTS engines (engine.py abstract base + edge_tts / xtts) + audio alignment (align.py)
-translate/    → Translation engines (engine.py abstract base + llm / llm_local / deepl)
-subtitle/     → Subtitle format handling (srt, ass, convert)
+engines/      → AI engines (strategy pattern: engine.py ABC + implementations)
+  asr/        →   Speech recognition (whisper_local / whisper_api)
+  tts/        →   TTS (edge_tts / xtts) + audio alignment
+  translate/  →   Translation (llm / llm_local / deepl)
+processing/   → Media processing
+  core/       →   FFmpeg operations (probe, extract, mux, burn, sync)
+  subtitle/   →   Subtitle format handling (srt, ass, convert)
+  pipeline/   →   End-to-end workflows (ASR→subtitles→mux, ASR→translate→TTS→mux, track switching)
+web/          → Web layer
+  api/        →   FastAPI REST endpoints
+  templates/  →   Jinja2 + HTMX server-rendered pages
+  static/     →   CSS/JS static assets
 config/       → Two-layer config: settings.yaml (committed) + settings.local.yaml (gitignored)
               → requirements.py: hardware detection + 5-tier profile matching + minimum requirements check
 ```
@@ -46,7 +50,7 @@ config/       → Two-layer config: settings.yaml (committed) + settings.local.y
 - Direct: `python app.py` (requires Python 3.13+ + FFmpeg)
 - GPU Worker: separate `worker.py` on host machine (:9001) for CUDA inference
 
-Each AI module (`asr/`, `tts/`, `translate/`) follows a strategy pattern: `engine.py` defines an abstract interface, and implementations are swappable.
+Each AI module (`engines/asr/`, `engines/tts/`, `engines/translate/`) follows a strategy pattern: `engine.py` defines an abstract interface, and implementations are swappable.
 
 ## FFmpeg notes
 

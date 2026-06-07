@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -46,23 +47,26 @@ logger.info("配置加载完成")
 
 # 硬件检测 + 自动选择配置档
 info = detect_system_info()
-profile_name = auto_configure(settings)
+profile_name = auto_configure(settings, info=info)
 logger.info("选中配置档: %s", profile_name)
 
-# 最低配置检查
-warnings = check_minimum_requirements(settings)
-if warnings:
-    for w in warnings:
-        logger.warning("⚠ %s", w)
+# 最低配置检查（不满足则退出）
+failures = check_minimum_requirements(settings, info=info)
+if failures:
+    logger.error("=" * 50)
+    logger.error("不满足最低运行要求，退出。请升级硬件或修改配置。")
+    logger.error("=" * 50)
+    sys.exit(1)
 
-# 版本号
-_version_path = Path(__file__).resolve().parent / "__init__.py"
+# 版本号（从 __init__.py 中正则提取，避免 exec()）
 __version__ = "0.1.0"
+_version_path = Path(__file__).resolve().parent / "__init__.py"
 if _version_path.exists():
     try:
-        _scope: dict[str, str] = {}
-        exec(_version_path.read_text(encoding="utf-8"), _scope)
-        __version__ = _scope.get("__version__", __version__)
+        _text = _version_path.read_text(encoding="utf-8")
+        _match = re.search(r'__version__\s*=\s*"([^"]+)"', _text)
+        if _match:
+            __version__ = _match.group(1)
     except Exception:
         logger.debug("无法读取版本号", exc_info=True)
 
@@ -71,7 +75,7 @@ if _version_path.exists():
 # 应用与模板
 # ---------------------------------------------------------------------------
 
-templates = Jinja2Templates(directory="templates")
+templates = Jinja2Templates(directory="web/templates")
 
 
 @asynccontextmanager
@@ -90,7 +94,7 @@ app = FastAPI(
 )
 
 # 静态文件
-_static_dir = Path(__file__).resolve().parent / "static"
+_static_dir = Path(__file__).resolve().parent / "web" / "static"
 if _static_dir.exists():
     app.mount("/static", StaticFiles(directory=str(_static_dir)), name="static")
 
@@ -98,6 +102,11 @@ if _static_dir.exists():
 # ---------------------------------------------------------------------------
 # 路由
 # ---------------------------------------------------------------------------
+
+# API 路由（各功能模块在 web/api/ 下注册）
+from web.api import router as api_router
+
+app.include_router(api_router)
 
 
 @app.get("/")
@@ -114,6 +123,15 @@ async def index(request: Request):
         },
         "tts": {"engine": settings.tts.engine},
         "translate": {"engine": settings.translate.engine},
+    })
+
+
+@app.get("/probe")
+async def probe_page(request: Request):
+    """流探测页面。"""
+    logger.debug("GET /probe")
+    return templates.TemplateResponse(request, "probe.html", {
+        "version": __version__,
     })
 
 

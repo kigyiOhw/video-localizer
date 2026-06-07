@@ -7,8 +7,6 @@ from pathlib import Path
 import pytest
 
 from config.requirements import (
-    _MIN_DISK_GB,
-    _MIN_RAM_GB,
     check_minimum_requirements,
     detect_system_info,
     select_profile,

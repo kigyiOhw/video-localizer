@@ -10,7 +10,7 @@ Packages that only ship cp312/cp313 wheels will fail to install.
 Each AI module follows a **strategy pattern** with an abstract base:
 
 ```
-module/
+engines/<name>/
 ├── engine.py    # Abstract base class defining the interface
 ├── impl_a.py    # Concrete implementation A
 └── impl_b.py    # Concrete implementation B
@@ -29,7 +29,7 @@ When adding a new engine implementation, subclass the abstract base in `engine.p
 
 - **Never** commit personal information: no absolute paths, no hardware specs, no API keys, no local URLs
 - Personal config lives in `config/settings.local.yaml` and `.env` (both gitignored) — commit only `settings.yaml` and `.env.example`
-- The `memory/` directory is gitignored; `MEMORY.md` (the index) may be committed but must contain only config-key references, no actual paths or hardware details
+- The `.claude/memory/` directory is gitignored; `MEMORY.md` (the index) may be committed but must contain only config-key references, no actual paths or hardware details
 - When updating committed docs (CLAUDE.md, rules, docs/), reference config keys (e.g. `paths.model_root`), never literal paths (e.g. `D:\AI\Models`)
 
 ## Code style
