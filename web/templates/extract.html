@@ -1,0 +1,432 @@
+{% extends "base.html" %}
+{% block title %}流提取 - Video-Localizer{% endblock %}
+
+{% block head %}
+<style>
+/* ---- Extract Flow ---- */
+
+.extract-step {
+    margin-bottom: 32px;
+}
+
+.extract-step h3 {
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.step-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 700;
+}
+
+/* Path input (reuse probe styles) */
+.path-input-row {
+    display: flex;
+    gap: 10px;
+}
+
+.path-input-row input {
+    flex: 1;
+    padding: 10px 14px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 0.9rem;
+    font-family: "SF Mono", "Consolas", monospace;
+}
+
+.path-input-row input:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+/* Stream selection checkboxes */
+.stream-select-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.stream-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+}
+
+.stream-checkbox:hover {
+    background: var(--surface-hover);
+}
+
+.stream-checkbox:has(input:checked) {
+    border-color: var(--accent);
+    background: rgba(108, 138, 255, 0.05);
+}
+
+.stream-checkbox.video { border-left-color: var(--accent); }
+.stream-checkbox.audio { border-left-color: var(--green); }
+.stream-checkbox.subtitle { border-left-color: var(--yellow); }
+
+.stream-checkbox input[type="checkbox"] {
+    accent-color: var(--accent);
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.checkbox-info {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.checkbox-codec {
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.checkbox-index {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    font-family: "SF Mono", "Consolas", monospace;
+}
+
+.ext-hint {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    margin-left: auto;
+}
+
+/* Extract button area */
+.extract-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+#extract-results {
+    margin-top: 24px;
+}
+
+/* Result cards */
+.result-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--green);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    margin-bottom: 12px;
+}
+
+.result-card.video { border-left-color: var(--accent); }
+.result-card.audio { border-left-color: var(--green); }
+.result-card.subtitle { border-left-color: var(--yellow); }
+
+.result-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.result-type {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: var(--accent-dim);
+    color: var(--text);
+}
+
+.result-info {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+}
+
+.btn-small {
+    padding: 6px 14px;
+    font-size: 0.8rem;
+}
+
+.btn-download {
+    background: var(--green);
+    color: #000;
+    border: none;
+    border-radius: var(--radius);
+    padding: 6px 14px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: opacity 0.15s;
+}
+
+.btn-download:hover {
+    opacity: 0.85;
+}
+
+/* Warning message */
+.warning-message {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    background: rgba(251, 191, 36, 0.1);
+    border: 1px solid rgba(251, 191, 36, 0.3);
+    border-radius: var(--radius);
+    padding: 14px 18px;
+    color: #fcd34d;
+    font-size: 0.9rem;
+    margin-top: 12px;
+}
+
+/* Empty state */
+.empty-select {
+    text-align: center;
+    padding: 24px;
+    color: var(--text-dim);
+    font-size: 0.9rem;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="probe-panel">
+    <h2>📤 流提取</h2>
+    <p class="desc" style="margin-bottom: 20px;">探测媒体文件 → 选择要提取的流 → 下载独立文件</p>
+
+    {# Step 1: 路径输入 + 探测 #}
+    <div class="extract-step">
+        <h3><span class="step-badge">1</span> 选择文件</h3>
+        <div class="path-input-row">
+            <input type="text" id="extract-path"
+                   name="file_path"
+                   placeholder="输入媒体文件路径，如 /media/input/movie.mkv"
+                   hx-post="/api/probe"
+                   hx-target="#stream-select-area"
+                   hx-trigger="keyup[key=='Enter']"
+                   hx-indicator="#probe-spinner">
+            <button class="btn btn-primary"
+                    hx-post="/api/probe"
+                    hx-include="#extract-path"
+                    hx-target="#stream-select-area"
+                    hx-indicator="#probe-spinner">
+                探测
+            </button>
+        </div>
+        <div class="path-hint" style="margin-top: 6px;">输入文件路径后按回车或点击「探测」</div>
+        <span id="probe-spinner" class="htmx-indicator" style="margin-top: 8px; display: inline-flex; align-items: center; gap: 6px; color: var(--text-dim); font-size: 0.85rem;">
+            <span class="spinner"></span> 探测中...
+        </span>
+    </div>
+
+    {# Step 2: 流选择（HTMX 填充，初始为空） #}
+    <div class="extract-step" id="stream-select-area">
+        <div class="empty-select">👆 请先输入文件路径并点击「探测」</div>
+    </div>
+
+    {# Step 3: 提取按钮（点击后触发提取） #}
+    <div id="extract-actions-area" style="display: none;">
+        <div class="extract-actions">
+            <button class="btn btn-primary"
+                    id="extract-btn"
+                    hx-post="/api/extract"
+                    hx-include="#stream-select-area input[type=checkbox]:checked,#extract-path"
+                    hx-target="#extract-results"
+                    hx-indicator="#extract-spinner"
+                    disabled>
+                提取选中流
+            </button>
+            <span id="extract-spinner" class="htmx-indicator" style="display: inline-flex; align-items: center; gap: 6px; color: var(--text-dim); font-size: 0.85rem;">
+                <span class="spinner"></span> 提取中...
+            </span>
+        </div>
+    </div>
+
+    {# 结果区 #}
+    <div id="extract-results"></div>
+</div>
+
+<script>
+// --- Step 2: 探测完成后显示流选择 UI ---
+document.body.addEventListener('htmx:afterSwap', function(evt) {
+    // 探测结果到达 → 解析展示为可勾选的流列表
+    if (evt.detail.target.id === 'stream-select-area') {
+        var el = evt.detail.target;
+        var data = null;
+
+        // 尝试从 HTMX 返回的 HTML 中解析 JSON（probe 返回 probe_results.html 片段）
+        // 更简单的做法：在 probe 请求成功后直接再做一次 JSON 请求
+        // 这里我们监听 swap 后重新用 JSON 获取流列表
+        var pathInput = document.getElementById('extract-path');
+        if (!pathInput || !pathInput.value.trim()) return;
+
+        // 用 fetch 获取 JSON 格式的探测结果
+        var formData = new FormData();
+        formData.append('file_path', pathInput.value.trim());
+
+        fetch('/api/probe', { method: 'POST', body: formData })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (!data.success) {
+                    el.innerHTML = '<div class="error-message"><span class="error-icon">⚠️</span><div><strong>探测失败</strong><p>' + data.error + '</p></div></div>';
+                    document.getElementById('extract-actions-area').style.display = 'none';
+                    return;
+                }
+                renderStreamSelection(el, data);
+                document.getElementById('extract-actions-area').style.display = 'block';
+            })
+            .catch(function(err) {
+                // JSON 解析失败 → HTML fragment 已经显示，保持原样
+                // 但如果 probe_results 已经渲染了完整的探测结果（非选择模式），不做额外处理
+                console.debug('Probe rendered as HTML fragment:', err);
+            });
+    }
+});
+
+function renderStreamSelection(container, data) {
+    var html = '<h3><span class="step-badge">2</span> 选择要提取的流</h3>';
+    var hasStreams = false;
+
+    // 音频流
+    if (data.audio_streams && data.audio_streams.length > 0) {
+        html += '<h4 style="font-size: 0.85rem; color: var(--green); margin: 16px 0 8px;">🔊 音频流</h4>';
+        html += '<div class="stream-select-list">';
+        data.audio_streams.forEach(function(a, i) {
+            var label = (a.codec_long || a.codec) + (a.language ? ' — ' + a.language.toUpperCase() : '');
+            var chan = a.channels === 1 ? '单声道' : a.channels === 2 ? '立体声' : a.channels + 'ch';
+            var ext = guessExt(a.codec, 'audio');
+            html += '<label class="stream-checkbox audio">' +
+                '<input type="checkbox" name="streams" value="audio:' + i + ':' + ext + '">' +
+                '<span class="checkbox-info">' +
+                    '<span class="checkbox-codec">' + label + '</span>' +
+                    '<span class="checkbox-index">#' + a.index + '</span>' +
+                    '<span style="font-size: 0.8rem; color: var(--text-dim);">' + chan + ' ' + (a.sample_rate / 1000).toFixed(1) + 'kHz</span>' +
+                '</span>' +
+                '<span class="ext-hint">.' + ext + '</span>' +
+                '</label>';
+            hasStreams = true;
+        });
+        html += '</div>';
+    }
+
+    // 字幕流
+    if (data.subtitle_streams && data.subtitle_streams.length > 0) {
+        html += '<h4 style="font-size: 0.85rem; color: var(--yellow); margin: 16px 0 8px;">📝 字幕流</h4>';
+        html += '<div class="stream-select-list">';
+        data.subtitle_streams.forEach(function(s, i) {
+            var label = (s.codec_long || s.codec) + (s.language ? ' — ' + s.language.toUpperCase() : '');
+            var ext = guessExt(s.codec, 'subtitle');
+            html += '<label class="stream-checkbox subtitle">' +
+                '<input type="checkbox" name="streams" value="subtitle:' + i + ':' + ext + '">' +
+                '<span class="checkbox-info">' +
+                    '<span class="checkbox-codec">' + label + '</span>' +
+                    '<span class="checkbox-index">#' + s.index + '</span>' +
+                '</span>' +
+                '<span class="ext-hint">.' + ext + '</span>' +
+                '</label>';
+            hasStreams = true;
+        });
+        html += '</div>';
+    }
+
+    // 视频流
+    if (data.video_streams && data.video_streams.length > 0) {
+        html += '<h4 style="font-size: 0.85rem; color: var(--accent); margin: 16px 0 8px;">🎥 视频流</h4>';
+        html += '<div class="stream-select-list">';
+        data.video_streams.forEach(function(v, i) {
+            var label = (v.codec_long || v.codec) + ' ' + v.width + '×' + v.height;
+            var ext = guessExt(v.codec, 'video');
+            html += '<label class="stream-checkbox video">' +
+                '<input type="checkbox" name="streams" value="video:' + i + ':' + ext + '">' +
+                '<span class="checkbox-info">' +
+                    '<span class="checkbox-codec">' + label + '</span>' +
+                    '<span class="checkbox-index">#' + v.index + '</span>' +
+                    '<span style="font-size: 0.8rem; color: var(--text-dim);">' + (v.fps_float ? v.fps_float.toFixed(2) + 'fps' : '') + '</span>' +
+                '</span>' +
+                '<span class="ext-hint">.' + ext + '</span>' +
+                '</label>';
+            hasStreams = true;
+        });
+        html += '</div>';
+    }
+
+    if (!hasStreams) {
+        html += '<div class="empty-select">😕 未检测到任何可提取的流</div>';
+        document.getElementById('extract-actions-area').style.display = 'none';
+    }
+
+    container.innerHTML = html;
+
+    // 监听复选框变化，启用/禁用提取按钮
+    var checkboxes = container.querySelectorAll('input[type=checkbox]');
+    var extractBtn = document.getElementById('extract-btn');
+    function updateBtn() {
+        var anyChecked = container.querySelector('input[type=checkbox]:checked');
+        if (extractBtn) extractBtn.disabled = !anyChecked;
+    }
+    checkboxes.forEach(function(cb) { cb.addEventListener('change', updateBtn); });
+    updateBtn();  // 初始状态：未勾选 → 禁用
+}
+
+function guessExt(codec, type) {
+    // 与后端 _suggest_extension 同步
+    if (type === 'audio') {
+        if (codec === 'aac' || codec === 'alac') return 'm4a';
+        if (codec === 'mp3') return 'mp3';
+        if (codec === 'opus') return 'opus';
+        if (codec === 'flac') return 'flac';
+        if (codec === 'vorbis') return 'ogg';
+        if (codec === 'ac3') return 'ac3';
+        if (codec === 'dts') return 'dts';
+        if (codec.startsWith('pcm_')) return 'wav';
+        return 'mka';
+    }
+    if (type === 'subtitle') {
+        if (codec === 'subrip') return 'srt';
+        if (codec === 'ass' || codec === 'ssa') return 'ass';
+        if (codec === 'webvtt') return 'vtt';
+        if (codec === 'mov_text') return 'srt';
+        return 'srt';
+    }
+    if (type === 'video') {
+        if (codec === 'h264') return 'mkv';
+        if (codec === 'hevc' || codec === 'h265') return 'mkv';
+        if (codec === 'vp9') return 'webm';
+        return 'mkv';
+    }
+    return 'bin';
+}
+</script>
+{% endblock %}

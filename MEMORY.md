@@ -2,3 +2,4 @@
 - [硬件配置档](.claude/memory/hardware-config.md) — 5 档 VRAM 自动检测与模型选择
 - [项目进度](.claude/memory/project-decisions.md) — Stage 1 完成，Stage 2 规划中，架构决策
 - [路径布局](.claude/memory/disk-layout.md) — Docker 卷挂载与容器路径映射
+- [ASR历史功能](.claude/memory/asr-history-features.md) — 取消暂存 + 历史记录 + 清理功能，下次实现

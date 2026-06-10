@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+{% block title %}语音识别 - Video-Localizer{% endblock %}
+
+{% block content %}
+<div class="probe-panel">
+    <h2>🎙️ 语音识别 (ASR)</h2>
+    <p class="desc" style="margin-bottom: 20px;">上传视频或音频文件 → 提取音轨 → faster-whisper 转写 → SRT 字幕</p>
+
+    {# 文件路径输入 #}
+    <div class="extract-step">
+        <h3><span class="step-badge">1</span> 选择文件</h3>
+        <div class="path-input-row">
+            <input type="text" id="asr-path" name="file_path"
+                   placeholder="输入媒体文件路径，如 /media/input/video.mp4"
+                   autofocus>
+        </div>
+        <div class="path-hint" style="margin-top: 6px;">支持所有常见视频/音频格式</div>
+    </div>
+
+    {# 选项 #}
+    <div class="extract-step">
+        <h3><span class="step-badge">2</span> 转写选项</h3>
+        <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 180px;">
+                <label style="font-size: 0.8rem; color: var(--text-dim); display: block; margin-bottom: 4px;">语言</label>
+                <select id="asr-language" name="language"
+                        style="width: 100%; padding: 8px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); font-size: 0.9rem;">
+                    <option value="auto">自动检测</option>
+                    <option value="ja">日本語</option>
+                    <option value="zh">中文</option>
+                    <option value="en">English</option>
+                    <option value="ko">한국어</option>
+                    <option value="fr">Français</option>
+                    <option value="de">Deutsch</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    {# 操作 #}
+    <div class="extract-actions">
+        <button class="btn btn-primary" id="asr-btn" onclick="startASR()">
+            🎙️ 开始转写
+        </button>
+        <button class="btn" id="asr-cancel" onclick="cancelASR()"
+                style="display: none; background: rgba(248,113,113,0.15); color: #fca5a5;">
+            ✕ 取消
+        </button>
+    </div>
+
+    {# 进度区 #}
+    <div id="asr-progress" style="display: none; margin-top: 20px;">
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+            <span class="spinner" id="asr-spin"></span>
+            <span id="asr-status" style="font-size: 0.9rem; color: var(--text-dim);">准备中...</span>
+            <span id="asr-speed" style="font-size: 0.8rem; color: var(--accent); margin-left: auto;"></span>
+        </div>
+        <div style="background: var(--bg); border-radius: 4px; height: 6px; overflow: hidden;">
+            <div id="asr-bar" style="height: 100%; width: 0%; background: var(--accent); border-radius: 4px; transition: width 0.3s;"></div>
+        </div>
+        <div id="asr-progress-text" style="font-size: 0.75rem; color: var(--text-dim); margin-top: 4px;"></div>
+    </div>
+
+    {# 实时片段区 #}
+    <div id="asr-live" style="display: none; margin-top: 16px;">
+        <h4 style="font-size: 0.8rem; color: var(--text-dim); text-transform: uppercase; margin-bottom: 8px;">
+            📋 实时转写 <span id="asr-count"></span>
+        </h4>
+        <div id="asr-segments"
+             style="max-height: 360px; overflow-y: auto; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 0;">
+        </div>
+    </div>
+
+    {# 完成区 #}
+    <div id="asr-done" style="display: none; margin-top: 20px;"></div>
+</div>
+
+<script>
+let _asrSource = null;
+
+function startASR() {
+    var path = document.getElementById('asr-path').value.trim();
+    if (!path) { alert('请先输入文件路径'); return; }
+    var lang = document.getElementById('asr-language').value;
+
+    // 重置 UI
+    document.getElementById('asr-progress').style.display = 'block';
+    document.getElementById('asr-live').style.display = 'block';
+    document.getElementById('asr-done').style.display = 'none';
+    document.getElementById('asr-bar').style.width = '0%';
+    document.getElementById('asr-progress-text').textContent = '';
+    document.getElementById('asr-status').textContent = '准备中...';
+    document.getElementById('asr-speed').textContent = '';
+    document.getElementById('asr-count').textContent = '';
+    document.getElementById('asr-segments').innerHTML = '';
+    document.getElementById('asr-done').innerHTML = '';
+    document.getElementById('asr-btn').style.display = 'none';
+    document.getElementById('asr-cancel').style.display = 'inline-block';
+
+    // 构建 SSE URL
+    var url = '/api/asr/transcribe/stream';
+    var formData = new FormData();
+    formData.append('file_path', path);
+    if (lang !== 'auto') formData.append('language', lang);
+
+    // Fetch + 手动读取 SSE 流
+    _asrSource = new AbortController();
+
+    fetch(url, { method: 'POST', body: formData, signal: _asrSource.signal })
+        .then(function(response) {
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+            var reader = response.body.getReader();
+            var decoder = new TextDecoder();
+            var buffer = '';
+
+            function pump() {
+                return reader.read().then(function(result) {
+                    if (result.done) return;
+                    buffer += decoder.decode(result.value, {stream: true});
+                    // 解析完整的 SSE 消息
+                    var parts = buffer.split('\n\n');
+                    buffer = parts.pop();  // 最后一段可能不完整
+                    parts.forEach(function(msg) { handleSSE(msg); });
+                    return pump();
+                });
+            }
+            return pump();
+        })
+        .catch(function(err) {
+            if (err.name === 'AbortError') {
+                document.getElementById('asr-status').textContent = '已取消';
+            } else {
+                document.getElementById('asr-status').textContent = '连接错误: ' + err.message;
+            }
+            finishUI();
+        });
+}
+
+function cancelASR() {
+    if (_asrSource) _asrSource.abort();
+    _asrSource = null;
+}
+
+function handleSSE(msg) {
+    var lines = msg.split('\n');
+    var event = 'message', data = '';
+    lines.forEach(function(line) {
+        if (line.startsWith('event: ')) event = line.slice(7).trim();
+        else if (line.startsWith('data: ')) data = line.slice(6);
+    });
+    if (!data) return;
+
+    try { var payload = JSON.parse(data); } catch(e) { return; }
+
+    switch (event) {
+        case 'status':
+            document.getElementById('asr-status').textContent = payload.message;
+            break;
+
+        case 'segment':
+            addSegment(payload);
+            updateProgress(payload);
+            break;
+
+        case 'progress':
+            updateProgress(payload);
+            break;
+
+        case 'done':
+            showDone(payload);
+            break;
+
+        case 'error':
+            document.getElementById('asr-status').textContent = '❌ ' + payload.message;
+            document.getElementById('asr-bar').style.background = 'rgba(248,113,113,0.5)';
+            finishUI();
+            break;
+    }
+}
+
+function addSegment(seg) {
+    var container = document.getElementById('asr-segments');
+    var div = document.createElement('div');
+    div.style.cssText = 'display:flex;gap:10px;padding:3px 12px;font-size:0.85rem;border-bottom:1px solid var(--border);';
+    var startMin = Math.floor(seg.start / 60), startSec = Math.floor(seg.start % 60);
+    var endMin = Math.floor(seg.end / 60), endSec = Math.floor(seg.end % 60);
+    div.innerHTML =
+        '<span style="color:var(--text-dim);white-space:nowrap;min-width:72px;font-family:monospace;font-size:0.78rem;">' +
+        pad2(startMin) + ':' + pad2(startSec) + '-' + pad2(endMin) + ':' + pad2(endSec) +
+        '</span>' +
+        '<span style="flex:1;">' + escHtml(seg.text) + '</span>' +
+        '<span style="color:var(--green);font-size:0.72rem;white-space:nowrap;">' +
+        (seg.confidence > 0 ? Math.round(seg.confidence * 100) + '%' : '') + '</span>';
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+}
+
+function updateProgress(p) {
+    document.getElementById('asr-bar').style.width = (p.progress_pct || 0) + '%';
+    document.getElementById('asr-speed').textContent = p.speed || '';
+    if (p.segments) document.getElementById('asr-count').textContent = '(' + p.segments + ' 片段)';
+    if (p.elapsed) document.getElementById('asr-progress-text').textContent = '已耗时 ' + p.elapsed + 's';
+}
+
+function showDone(d) {
+    document.getElementById('asr-bar').style.width = '100%';
+    document.getElementById('asr-bar').style.background = 'var(--green)';
+    document.getElementById('asr-spin').style.display = 'none';
+    document.getElementById('asr-status').textContent = '✅ 转写完成';
+    document.getElementById('asr-speed').textContent = d.language.toUpperCase() + ' · ' + d.total_segments + '片段 · ' + d.speed;
+    document.getElementById('asr-progress-text').textContent = '模型: ' + d.model + ' · 设备: ' + d.device + ' · 耗时 ' + d.elapsed + 's';
+
+    // SRT 预览
+    var doneDiv = document.getElementById('asr-done');
+    doneDiv.style.display = 'block';
+    doneDiv.innerHTML =
+        '<details open style="margin-top:8px;">' +
+        '<summary style="cursor:pointer;font-size:0.85rem;color:var(--accent);padding:6px 0;">📄 SRT 字幕 (' + d.total_segments + ' 条)</summary>' +
+        '<div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:16px;max-height:300px;overflow-y:auto;font-family:monospace;font-size:0.8rem;line-height:1.7;white-space:pre-wrap;color:var(--text);margin-top:6px;">' +
+        escHtml(d.srt || '') + '</div></details>';
+
+    finishUI();
+}
+
+function finishUI() {
+    document.getElementById('asr-btn').style.display = 'inline-block';
+    document.getElementById('asr-cancel').style.display = 'none';
+    document.getElementById('asr-spin').style.display = 'none';
+}
+
+function pad2(n) { return n < 10 ? '0' + n : '' + n; }
+function escHtml(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+</script>
+{% endblock %}

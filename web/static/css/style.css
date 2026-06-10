@@ -35,37 +35,75 @@ body {
 /* ---- Navbar ---- */
 
 .navbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 14px 24px;
     background: var(--surface);
     border-bottom: 1px solid var(--border);
 }
 
-.nav-brand a {
-    font-size: 1.2rem;
+.nav-top {
+    display: flex;
+    align-items: center;
+    padding: 12px 24px;
+}
+
+.nav-brand {
+    font-size: 1.25rem;
     font-weight: 700;
     color: var(--text);
     text-decoration: none;
 }
 
-.nav-version {
-    font-size: 0.8rem;
-    color: var(--text-dim);
-    margin-left: 8px;
+.nav-brand:hover {
+    color: var(--accent);
 }
 
-.nav-links a {
+.nav-version {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    margin-left: 10px;
+    margin-right: auto;
+}
+
+.nav-aux {
+    font-size: 0.8rem;
     color: var(--text-dim);
     text-decoration: none;
-    margin-left: 20px;
-    font-size: 0.9rem;
     transition: color 0.15s;
 }
 
-.nav-links a:hover {
+.nav-aux:hover {
     color: var(--accent);
+}
+
+/* ---- Nav Tabs ---- */
+
+.nav-tabs {
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+    padding: 0 24px 0;
+}
+
+.nav-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 24px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--text-dim);
+    text-decoration: none;
+    border-bottom: 2px solid transparent;
+    border-radius: 6px 6px 0 0;
+    transition: color 0.15s, border-color 0.15s;
+}
+
+.nav-tab:hover {
+    color: var(--text);
+}
+
+.nav-tab.active {
+    color: var(--text);
+    border-bottom-color: var(--text-dim);
 }
 
 /* ---- Container ---- */
@@ -346,6 +384,11 @@ body {
     background: var(--accent-dim);
 }
 
+.btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
 /* Spinner */
 
 .htmx-indicator {
@@ -552,6 +595,97 @@ body {
     padding: 32px;
     color: var(--text-dim);
     font-size: 0.95rem;
+}
+
+/* ---- Extract Results ---- */
+
+.result-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--green);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    margin-bottom: 12px;
+}
+
+.result-card.video { border-left-color: var(--accent); }
+.result-card.audio { border-left-color: var(--green); }
+.result-card.subtitle { border-left-color: var(--yellow); }
+
+.result-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.result-type {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: var(--accent-dim);
+    color: var(--text);
+}
+
+.result-info {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+}
+
+.btn-download {
+    background: var(--green);
+    color: #000;
+    border: none;
+    border-radius: var(--radius);
+    padding: 6px 14px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: opacity 0.15s;
+}
+
+.btn-download:hover {
+    opacity: 0.85;
+}
+
+/* Extract Success / Warning */
+
+.extract-success h3 {
+    font-size: 0.9rem;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.warning-message {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    background: rgba(251, 191, 36, 0.1);
+    border: 1px solid rgba(251, 191, 36, 0.3);
+    border-radius: var(--radius);
+    padding: 14px 18px;
+    color: #fcd34d;
+    font-size: 0.9rem;
+    margin-top: 12px;
+}
+
+.empty-select {
+    text-align: center;
+    padding: 24px;
+    color: var(--text-dim);
+    font-size: 0.9rem;
 }
 
 /* ---- Footer ---- */

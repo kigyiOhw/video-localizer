@@ -4,20 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Video-Localizer{% endblock %}</title>
-    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/style.css?v={{ version }}">
     <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
     {% block head %}{% endblock %}
 </head>
 <body hx-boost="true">
     <nav class="navbar">
-        <div class="nav-brand">
-            <a href="/">🎬 Video-Localizer</a>
+        <div class="nav-top">
+            <a href="/" class="nav-brand">🎬 Video-Localizer</a>
             <span class="nav-version">v{{ version }}</span>
+            <a href="/docs" target="_blank" class="nav-aux">API 文档</a>
         </div>
-        <div class="nav-links">
-            <a href="/probe">流探测</a>
-            <a href="/docs" target="_blank">API 文档</a>
-            <a href="/api/health">健康检查</a>
+        <div class="nav-tabs">
+            <a href="/" class="nav-tab" data-page="home">🏠 首页</a>
+            <a href="/probe" class="nav-tab" data-page="probe">🔍 流探测</a>
+            <a href="/extract" class="nav-tab" data-page="extract">📤 流提取</a>
+            <a href="/asr" class="nav-tab" data-page="asr">🎙️ 语音识别</a>
         </div>
     </nav>
 
@@ -28,5 +30,21 @@
     <footer class="footer">
         <p>Video-Localizer &copy; 2026 — AI-powered subtitle &amp; dubbing toolkit</p>
     </footer>
+
+    <script>
+    // 根据当前路径高亮导航标签
+    (function() {
+        var path = window.location.pathname;
+        var tabs = document.querySelectorAll('.nav-tab');
+        tabs.forEach(function(tab) {
+            var page = tab.getAttribute('data-page');
+            if (page === 'home' && (path === '/' || path === '')) {
+                tab.classList.add('active');
+            } else if (page !== 'home' && path.startsWith('/' + page)) {
+                tab.classList.add('active');
+            }
+        });
+    })();
+    </script>
 </body>
 </html>

@@ -135,6 +135,24 @@ async def probe_page(request: Request):
     })
 
 
+@app.get("/extract")
+async def extract_page(request: Request):
+    """流提取页面。"""
+    logger.debug("GET /extract")
+    return templates.TemplateResponse(request, "extract.html", {
+        "version": __version__,
+    })
+
+
+@app.get("/asr")
+async def asr_page(request: Request):
+    """语音识别页面。"""
+    logger.debug("GET /asr")
+    return templates.TemplateResponse(request, "asr.html", {
+        "version": __version__,
+    })
+
+
 @app.get("/api/health")
 async def health():
     """健康检查 + 当前配置信息（JSON）。"""

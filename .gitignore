@@ -42,12 +42,21 @@ htmlcov/
 *.log
 *.bak
 
-# Media temp files
-temp/
-tmp/
+# Media files (keep directory structure with .gitkeep)
+media/input/*
+media/output/*
+media/temp/*
+!media/input/.gitkeep
+!media/output/.gitkeep
+!media/temp/.gitkeep
+
+# General temp files (project root only)
+/temp/
+/tmp/
 *.wav
 *.mp3
 *.m4a
+*.mp4
 !test/fixtures/*.mp3
 !test/fixtures/*.wav
 

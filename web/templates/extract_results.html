@@ -1,0 +1,47 @@
+{# HTMX fragment — 提取结果或错误信息 #}
+
+{% if error %}
+<div class="error-message">
+    <span class="error-icon">⚠️</span>
+    <div>
+        <strong>提取失败</strong>
+        <p>{{ error }}</p>
+    </div>
+</div>
+{% elif results and results|length > 0 %}
+<div class="extract-success">
+    <h3 style="font-size: 0.9rem; color: var(--text-dim); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.05em;">
+        ✅ 提取完成 ({{ results|length }} 个文件)
+    </h3>
+
+    {% for r in results %}
+    <div class="result-card {{ r.stream_type }}">
+        <div class="result-header">
+            <span class="result-type">{{ r.stream_type }}</span>
+            <span class="checkbox-codec">{{ r.codec }}</span>
+            <span class="checkbox-index">同类 #{{ r.stream_index }}</span>
+        </div>
+        <div class="result-info">
+            <span>📄 {{ r.output_path.name }}</span>
+            <span>📏 {{ format_size(r.output_size) if format_size else r.output_size }} B</span>
+            {% if r.duration %}
+            <span>⏱ {{ "%.1f" | format(r.duration) }}s</span>
+            {% endif %}
+        </div>
+        <div style="margin-top: 12px;">
+            <a href="/api/extract/download?path={{ r.output_path }}"
+               class="btn-download" download>
+                ⬇ 下载
+            </a>
+        </div>
+    </div>
+    {% endfor %}
+
+    <div class="warning-message">
+        <span>💡</span>
+        <span>文件保留在服务器上。请及时下载，后续清理功能将在后续版本中实现。</span>
+    </div>
+</div>
+{% else %}
+<div class="empty-select">🤔 没有提取结果</div>
+{% endif %}
