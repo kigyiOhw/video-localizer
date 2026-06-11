@@ -1,0 +1,419 @@
+{% extends "base.html" %}
+{% block title %}字幕管理 - Video-Localizer{% endblock %}
+
+{% block head %}
+<style>
+/* ---- Subtitle Panel ---- */
+
+.subtitle-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-bottom: 32px;
+}
+
+.subtitle-panel h2 {
+    font-size: 1rem;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Input Mode Tabs */
+
+.input-mode-tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 12px;
+}
+
+.mode-tab {
+    padding: 8px 20px;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    background: none;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+
+.mode-tab:first-child { border-radius: var(--radius) 0 0 var(--radius); }
+.mode-tab:last-child { border-radius: 0 var(--radius) var(--radius) 0; }
+
+.mode-tab.active {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: rgba(108, 138, 255, 0.08);
+}
+
+.mode-tab:hover:not(.active) {
+    color: var(--text);
+}
+
+/* Input groups */
+
+.input-group {
+    margin-bottom: 20px;
+}
+
+.input-group label {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 8px;
+}
+
+.path-input {
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 0.9rem;
+    font-family: "SF Mono", "Consolas", monospace;
+}
+
+.path-input:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+/* File upload */
+
+.file-drop {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+}
+
+.file-drop:hover {
+    border-color: var(--accent-dim);
+    background: var(--surface-hover);
+}
+
+.file-drop input[type="file"] {
+    display: none;
+}
+
+.file-drop-icon {
+    font-size: 1.8rem;
+    margin-bottom: 6px;
+}
+
+.file-drop-text {
+    font-size: 0.85rem;
+    color: var(--text-dim);
+}
+
+.file-drop-name {
+    font-size: 0.85rem;
+    color: var(--accent);
+    margin-top: 4px;
+}
+
+/* Hidden by default */
+.mode-content { display: none; }
+.mode-content.active { display: block; }
+
+/* Options Row */
+
+.options-row {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+
+.option-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.option-group label {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.option-group select,
+.option-group input {
+    padding: 8px 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 0.9rem;
+    min-width: 120px;
+}
+
+.option-group select:focus,
+.option-group input:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+/* Radio */
+
+.container-radio-group {
+    display: flex;
+    gap: 16px;
+    padding-top: 2px;
+}
+
+.container-radio {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+.container-radio input[type="radio"] {
+    accent-color: var(--accent);
+}
+
+/* Actions */
+
+.subtitle-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+/* Results area */
+
+#subtitle-results {
+    margin-bottom: 40px;
+}
+
+/* Success card */
+
+.success-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--green);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+}
+
+.success-card h3 {
+    font-size: 0.9rem;
+    color: var(--text-dim);
+    margin-bottom: 16px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.success-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.success-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.success-label {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+}
+
+.success-value {
+    font-size: 0.95rem;
+    font-family: "SF Mono", "Consolas", monospace;
+    word-break: break-all;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="subtitle-panel">
+    <h2>📝 添加字幕</h2>
+    <p class="desc" style="margin-bottom: 24px;">给视频封装外部字幕文件作为软字幕轨道（不重编码）</p>
+
+    <form id="subtitle-form"
+          hx-post="/api/subtitle/add"
+          hx-target="#subtitle-results"
+          hx-indicator="#subtitle-spinner"
+          hx-encoding="multipart/form-data">
+
+        {# 视频输入 #}
+        <div class="input-group">
+            <label>📹 视频文件</label>
+            <div class="input-mode-tabs">
+                <button type="button" class="mode-tab active" data-group="video" data-mode="path">📂 路径</button>
+                <button type="button" class="mode-tab" data-group="video" data-mode="upload">📤 上传</button>
+            </div>
+            <div class="mode-content active" id="video-path-mode">
+                <input type="text" name="video_path" class="path-input"
+                       placeholder="输入视频文件路径，如 /media/input/movie.mkv">
+            </div>
+            <div class="mode-content" id="video-upload-mode">
+                <label class="file-drop" id="video-drop">
+                    <input type="file" name="video_file" id="video-file-input"
+                           accept="video/*,.mkv,.mp4,.avi,.mov,.webm">
+                    <div class="file-drop-icon">🎥</div>
+                    <div class="file-drop-text">点击选择视频文件</div>
+                    <div class="file-drop-name" id="video-file-name"></div>
+                </label>
+            </div>
+        </div>
+
+        {# 字幕输入 #}
+        <div class="input-group">
+            <label>📄 字幕文件</label>
+            <div class="input-mode-tabs">
+                <button type="button" class="mode-tab active" data-group="sub" data-mode="path">📂 路径</button>
+                <button type="button" class="mode-tab" data-group="sub" data-mode="upload">📤 上传</button>
+            </div>
+            <div class="mode-content active" id="sub-path-mode">
+                <input type="text" name="subtitle_path" class="path-input"
+                       placeholder="输入字幕文件路径，如 /media/input/subtitle.srt">
+            </div>
+            <div class="mode-content" id="sub-upload-mode">
+                <label class="file-drop" id="sub-drop">
+                    <input type="file" name="subtitle_file" id="sub-file-input"
+                           accept=".srt,.ass,.ssa,.vtt">
+                    <div class="file-drop-icon">📝</div>
+                    <div class="file-drop-text">点击选择字幕文件（.srt / .ass / .vtt）</div>
+                    <div class="file-drop-name" id="sub-file-name"></div>
+                </label>
+            </div>
+        </div>
+
+        {# 选项 #}
+        <div class="options-row">
+            <div class="option-group">
+                <label>🌐 语言</label>
+                <select name="language" id="lang-select">
+                    <option value="zho" selected>中文 (zho)</option>
+                    <option value="eng">English (eng)</option>
+                    <option value="jpn">日本語 (jpn)</option>
+                    <option value="kor">한국어 (kor)</option>
+                    <option value="fre">Français (fre)</option>
+                    <option value="ger">Deutsch (ger)</option>
+                    <option value="spa">Español (spa)</option>
+                    <option value="por">Português (por)</option>
+                    <option value="rus">Русский (rus)</option>
+                    <option value="ara">العربية (ara)</option>
+                    <option value="ita">Italiano (ita)</option>
+                    <option value="tha">ไทย (tha)</option>
+                </select>
+            </div>
+            <div class="option-group">
+                <label>🏷️ 自定义语言代码</label>
+                <input type="text" name="language_custom" id="lang-custom"
+                       placeholder="ISO 639-2 三字母代码"
+                       style="width: 100px;"
+                       oninput="document.getElementById('lang-select').value = '';">
+            </div>
+            <div class="option-group">
+                <label>📦 容器格式</label>
+                <div class="container-radio-group">
+                    <label class="container-radio">
+                        <input type="radio" name="container" value="mkv" checked> MKV（推荐）
+                    </label>
+                    <label class="container-radio">
+                        <input type="radio" name="container" value="mp4"> MP4
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        {# 提交 #}
+        <div class="subtitle-actions">
+            <button type="submit" class="btn btn-primary">📝 添加字幕</button>
+            <span id="subtitle-spinner" class="htmx-indicator" style="display: inline-flex; align-items: center; gap: 6px; color: var(--text-dim); font-size: 0.85rem;">
+                <span class="spinner"></span> 处理中...
+            </span>
+        </div>
+    </form>
+</div>
+
+{# 结果区 #}
+<div id="subtitle-results"></div>
+
+<script>
+// 视频输入模式切换
+document.querySelectorAll('.mode-tab[data-group="video"]').forEach(function(tab) {
+    tab.addEventListener('click', function() {
+        var group = this.getAttribute('data-group');
+        var mode = this.getAttribute('data-mode');
+        // 更新 tab 状态
+        document.querySelectorAll('.mode-tab[data-group="' + group + '"]').forEach(function(t) {
+            t.classList.remove('active');
+        });
+        this.classList.add('active');
+        // 显示对应内容
+        document.getElementById('video-path-mode').classList.toggle('active', mode === 'path');
+        document.getElementById('video-upload-mode').classList.toggle('active', mode === 'upload');
+        // 切换模式时清空另一输入
+        if (mode === 'path') {
+            document.getElementById('video-file-input').value = '';
+            document.getElementById('video-file-name').textContent = '';
+        } else {
+            document.querySelector('input[name="video_path"]').value = '';
+        }
+    });
+});
+
+// 字幕输入模式切换
+document.querySelectorAll('.mode-tab[data-group="sub"]').forEach(function(tab) {
+    tab.addEventListener('click', function() {
+        var group = this.getAttribute('data-group');
+        var mode = this.getAttribute('data-mode');
+        document.querySelectorAll('.mode-tab[data-group="' + group + '"]').forEach(function(t) {
+            t.classList.remove('active');
+        });
+        this.classList.add('active');
+        document.getElementById('sub-path-mode').classList.toggle('active', mode === 'path');
+        document.getElementById('sub-upload-mode').classList.toggle('active', mode === 'upload');
+        if (mode === 'path') {
+            document.getElementById('sub-file-input').value = '';
+            document.getElementById('sub-file-name').textContent = '';
+        } else {
+            document.querySelector('input[name="subtitle_path"]').value = '';
+        }
+    });
+});
+
+// 上传文件选定后显示文件名
+document.getElementById('video-file-input').addEventListener('change', function() {
+    document.getElementById('video-file-name').textContent = this.files[0] ? this.files[0].name : '';
+});
+document.getElementById('sub-file-input').addEventListener('change', function() {
+    document.getElementById('sub-file-name').textContent = this.files[0] ? this.files[0].name : '';
+});
+
+// 语言下拉选择后清空自定义输入
+document.getElementById('lang-select').addEventListener('change', function() {
+    if (this.value) {
+        document.getElementById('lang-custom').value = '';
+    }
+});
+
+// 提交前合并 language_custom → language
+document.getElementById('subtitle-form').addEventListener('htmx:configRequest', function(evt) {
+    var custom = document.getElementById('lang-custom').value.trim();
+    if (custom) {
+        evt.detail.parameters['language'] = custom;
+    }
+});
+</script>
+{% endblock %}

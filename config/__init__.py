@@ -77,13 +77,34 @@ class TTSConfig:
 
 @dataclass
 class TranslateConfig:
-    """翻译配置。"""
+    """翻译配置。
+
+    通过 LLM（远程 API 或本地 Ollama）将字幕翻译为目标语言。
+    """
 
     engine: str = "none"
+    target_language: str = "zho"  # ISO 639-3 目标语言代码
+    source_language: str = ""     # 源语言代码（空 = 自动）
+    api_base: str = ""            # OpenAI 兼容 API 地址
+    model: str = "gpt-4o-mini"   # 远程 LLM 模型名
+    ollama_base: str = "http://localhost:11434/v1"  # Ollama API 地址
+    ollama_model: str = "qwen2.5:7b"                # Ollama 模型名
+    temperature: float = 0.1     # 翻译温度（低 = 更忠实原文）
+    batch_size: int = 20         # 每批翻译片段数
 
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> "TranslateConfig":
-        return cls(engine=d.get("engine", "none"))
+        return cls(
+            engine=d.get("engine", "none"),
+            target_language=d.get("target_language", "zho"),
+            source_language=d.get("source_language", ""),
+            api_base=d.get("api_base", ""),
+            model=d.get("model", "gpt-4o-mini"),
+            ollama_base=d.get("ollama_base", "http://localhost:11434/v1"),
+            ollama_model=d.get("ollama_model", "qwen2.5:7b"),
+            temperature=float(d.get("temperature", 0.1)),
+            batch_size=int(d.get("batch_size", 20)),
+        )
 
 
 @dataclass
@@ -292,7 +313,11 @@ class Settings:
                 "compute_type": self.asr.compute_type,
             },
             "tts": {"engine": self.tts.engine},
-            "translate": {"engine": self.translate.engine},
+            "translate": {
+                "engine": self.translate.engine,
+                "target_language": self.translate.target_language,
+                "model": self.translate.model if self.translate.engine == "llm" else self.translate.ollama_model,
+            },
             "subtitle": {
                 "default_language": self.subtitle.default_language,
                 "default_format": self.subtitle.default_format,

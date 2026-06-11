@@ -219,6 +219,8 @@ async def _sse_generator(request: Request, input_path: Path, language: str | Non
     queue: asyncio.Queue = asyncio.Queue()
     settings = _get_settings()
 
+    logger.info("SSE 转写开始: %s (语言=%s)", input_path.name, language or "auto")
+
     # ── 阶段 1: 探测 + 提取 ──
     yield _sse("status", {"phase": "probe", "message": "正在探测媒体文件..."})
 
@@ -251,19 +253,24 @@ async def _sse_generator(request: Request, input_path: Path, language: str | Non
         yield _sse("error", {"message": f"音频提取失败: {e}"})
         return
 
-    yield _sse("status", {"phase": "load", "message": "正在加载模型..."})
+    yield _sse("status", {"phase": "load", "message": "正在加载 Whisper 模型到 GPU..."})
     engine = _get_engine()
+
+    # 模型加载必须在主线程完成（CUDA 上下文初始化在子线程中会死锁）
+    t0 = time.monotonic()
+    model = engine._get_model()
+    t1 = time.monotonic()
+    logger.info("模型加载耗时 %.1fs", t1 - t0)
 
     # ── 阶段 2: 后台转写 ──
     yield _sse("status", {
         "phase": "transcribe",
-        "message": f"正在转写... (模型: {engine._model_size}, 设备: {engine._device})",
+        "message": f"模型就绪 (%.1fs)，开始转写... (模型: {engine._model_size}, 设备: {engine._device})" % (t1 - t0),
     })
 
     def _run_transcribe():
         """在后台线程中跑转写，每个片段放入队列。"""
         try:
-            model = engine._get_model()
             seg_iter, info = model.transcribe(
                 str(audio_path),
                 language=language,
@@ -273,7 +280,13 @@ async def _sse_generator(request: Request, input_path: Path, language: str | Non
                     min_silence_duration_ms=500, threshold=0.5,
                 ) if engine._vad_filter else None,
             )
+            logger.info("开始推理，等待首个片段...")
+            seg_count = 0
             for seg in seg_iter:
+                seg_count += 1
+                if seg_count == 1:
+                    t_first = time.monotonic()
+                    logger.info("首个片段到达 (%.1fs): [%.1f-%.1f] %s", t_first - t1, seg.start, seg.end, seg.text[:80])
                 text = seg.text.strip()
                 if not text:
                     continue
@@ -283,11 +296,13 @@ async def _sse_generator(request: Request, input_path: Path, language: str | Non
                     "text": text,
                     "confidence": round(getattr(seg, "avg_logprob", 0.0), 3),
                 }))
+            logger.info("转写完成: %d 有效片段, 语言=%s (%.2f)", seg_count, info.language, info.language_probability)
             queue.put_nowait(("done", {
                 "language": info.language,
                 "language_probability": round(info.language_probability, 3),
             }))
         except Exception as e:
+            logger.warning("后台转写线程异常: %s", e, exc_info=True)
             queue.put_nowait(("error", {"message": str(e)}))
         finally:
             # 清理临时音频
@@ -308,7 +323,7 @@ async def _sse_generator(request: Request, input_path: Path, language: str | Non
         try:
             event_type, data = await asyncio.wait_for(queue.get(), timeout=0.3)
         except asyncio.TimeoutError:
-            # 心跳：推送进度
+            # 心跳：推送进度（加载期间也发送，避免前端卡住）
             elapsed = time.monotonic() - started
             if all_segments:
                 audio_dur = audio_stream.duration or 1
@@ -320,6 +335,14 @@ async def _sse_generator(request: Request, input_path: Path, language: str | Non
                     "elapsed": round(elapsed, 1),
                     "progress_pct": progress_pct,
                     "speed": f"{speed}x",
+                })
+            else:
+                # 尚无片段：模型仍在加载中，发送 0% 心跳
+                yield _sse("progress", {
+                    "segments": 0,
+                    "elapsed": round(elapsed, 1),
+                    "progress_pct": 0,
+                    "speed": "加载中...",
                 })
             continue
 
@@ -337,6 +360,9 @@ async def _sse_generator(request: Request, input_path: Path, language: str | Non
                 "progress_pct": progress_pct,
                 "speed": f"{speed}x",
             })
+
+        elif event_type == "status":
+            yield _sse("status", data)
 
         elif event_type == "done":
             done_info = data
@@ -471,6 +497,48 @@ async def _run_asr(
             "audio_stream_index": audio_index,
         },
     }
+
+
+# ---------------------------------------------------------------------------
+# 保存 SRT 到输出目录
+# ---------------------------------------------------------------------------
+
+from pydantic import BaseModel
+
+
+class SaveSRTRequest(BaseModel):
+    srt_content: str
+    file_name: str
+    video_path: str = ""
+
+
+@router.post("/save")
+async def asr_save_srt(body: SaveSRTRequest):
+    """POST /api/asr/save — 保存 SRT 字幕到输出目录。"""
+    settings = _get_settings()
+    output_dir = settings.paths.media_output
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    file_name = body.file_name
+    # 防止路径穿越
+    file_name = Path(file_name).name
+    if not file_name.endswith(".srt"):
+        file_name += ".srt"
+
+    output_path = output_dir / file_name
+    try:
+        output_path.write_text(body.srt_content, encoding="utf-8")
+        logger.info("SRT 已保存: %s (%d 字节)", output_path, len(body.srt_content))
+        return JSONResponse(content={
+            "success": True,
+            "file_path": str(output_path),
+        })
+    except OSError as e:
+        logger.warning("保存 SRT 失败: %s", e)
+        return JSONResponse(
+            content={"success": False, "error": str(e)},
+            status_code=500,
+        )
 
 
 # ---------------------------------------------------------------------------

@@ -39,6 +39,14 @@ tts:
 
 translate:
   engine: none
+  target_language: zho
+  source_language: ""
+  api_base: ""
+  model: gpt-4o-mini
+  ollama_base: http://localhost:11434/v1
+  ollama_model: qwen2.5:7b
+  temperature: 0.1
+  batch_size: 20
 
 # ---------------------------------------------------------------------------
 # 5-tier hardware profiles — auto-selected by VRAM at startup

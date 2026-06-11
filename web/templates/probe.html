@@ -55,40 +55,39 @@
 <section id="probe-results" class="probe-results">
     {# HTMX 将探测结果填充到此 #}
 </section>
-{% endblock %}
 
-{% block head %}
 <script>
-    // Tab 切换
-    document.addEventListener('DOMContentLoaded', () => {
-        const tabs = document.querySelectorAll('.probe-tab');
-        tabs.forEach(tab => {
-            tab.addEventListener('click', () => {
-                tabs.forEach(t => t.classList.remove('active'));
-                tab.classList.add('active');
-                const target = tab.dataset.tab;
-                document.querySelectorAll('.probe-tab-content').forEach(c => c.classList.add('hidden'));
-                document.getElementById('tab-' + target).classList.remove('hidden');
-                // 清除另一 tab 的输入
-                if (target === 'upload') {
-                    document.getElementById('probe-path').value = '';
-                } else {
-                    document.getElementById('probe-file').value = '';
-                    document.getElementById('file-name').textContent = '点击选择文件或拖放到此处';
-                }
-            });
-        });
-
-        // 文件选择反馈
-        const fileInput = document.getElementById('probe-file');
-        const fileName = document.getElementById('file-name');
-        fileInput.addEventListener('change', () => {
-            if (fileInput.files.length > 0) {
-                fileName.textContent = fileInput.files[0].name;
+// Tab 切换
+(function() {
+    const tabs = document.querySelectorAll('.probe-tab');
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            tabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            const target = tab.dataset.tab;
+            document.querySelectorAll('.probe-tab-content').forEach(c => c.classList.add('hidden'));
+            document.getElementById('tab-' + target).classList.remove('hidden');
+            // 清除另一 tab 的输入
+            if (target === 'upload') {
+                document.getElementById('probe-path').value = '';
             } else {
-                fileName.textContent = '点击选择文件或拖放到此处';
+                document.getElementById('probe-file').value = '';
+                document.getElementById('file-name').textContent = '点击选择文件或拖放到此处';
             }
         });
     });
+
+    // 文件选择反馈
+    const fileInput = document.getElementById('probe-file');
+    const fileName = document.getElementById('file-name');
+    fileInput.addEventListener('change', () => {
+        if (fileInput.files.length > 0) {
+            fileName.textContent = fileInput.files[0].name;
+        } else {
+            fileName.textContent = '点击选择文件或拖放到此处';
+        }
+    });
+})();
 </script>
 {% endblock %}
+

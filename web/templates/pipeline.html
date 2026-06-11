@@ -1,0 +1,410 @@
+{% extends "base.html" %}
+{% block title %}流水线 - Video-Localizer{% endblock %}
+
+{% block content %}
+<div class="probe-panel">
+    <h2>🔗 端到端流水线</h2>
+    <p class="desc" style="margin-bottom: 20px;">视频 → 提取音轨 → 语音识别 → 翻译 → 封装字幕，一站式完成</p>
+
+    {# 步骤 1: 视频文件 #}
+    <div class="extract-step">
+        <h3><span class="step-badge">1</span> 选择视频文件</h3>
+        <div class="path-input-row">
+            <input type="text" id="video-path" name="video_path"
+                   placeholder="输入视频文件路径，如 /media/input/video.mp4"
+                   autofocus>
+        </div>
+        <div class="path-hint" style="margin-top: 6px;">支持所有常见视频格式（MP4, MKV, AVI, MOV 等）</div>
+    </div>
+
+    {# 步骤 2: 语言选项 #}
+    <div class="extract-step">
+        <h3><span class="step-badge">2</span> 语言选项</h3>
+        <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 180px;">
+                <label style="font-size: 0.8rem; color: var(--text-dim); display: block; margin-bottom: 4px;">源语言（视频中说的语言）</label>
+                <select id="source-language" name="source_language"
+                        style="width: 100%; padding: 8px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); font-size: 0.9rem;">
+                    <option value="" selected>自动检测</option>
+                    <option value="en">English</option>
+                    <option value="zh">中文</option>
+                    <option value="ja">日本語</option>
+                    <option value="ko">한국어</option>
+                    <option value="fr">Français</option>
+                    <option value="de">Deutsch</option>
+                    <option value="es">Español</option>
+                    <option value="pt">Português</option>
+                    <option value="ru">Русский</option>
+                </select>
+            </div>
+            <div style="flex: 1; min-width: 180px;">
+                <label style="font-size: 0.8rem; color: var(--text-dim); display: block; margin-bottom: 4px;">目标语言（翻译成什么语言）</label>
+                <select id="target-language" name="target_language"
+                        style="width: 100%; padding: 8px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); font-size: 0.9rem;">
+                    <option value="Chinese" selected>中文</option>
+                    <option value="English">English</option>
+                    <option value="Japanese">日本語</option>
+                    <option value="Korean">한국어</option>
+                    <option value="French">Français</option>
+                    <option value="German">Deutsch</option>
+                    <option value="Spanish">Español</option>
+                    <option value="Portuguese">Português</option>
+                    <option value="Russian">Русский</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    {# 步骤 3: 操作 #}
+    <div class="extract-actions">
+        <button class="btn btn-primary" id="pipeline-btn" onclick="startPipeline()">
+            🚀 开始流水线
+        </button>
+        <button class="btn" id="pipeline-cancel" onclick="cancelPipeline()"
+                style="display: none; background: rgba(248,113,113,0.15); color: #fca5a5;">
+            ✕ 取消
+        </button>
+    </div>
+
+    {# 阶段指示器 #}
+    <div id="pipeline-phases" style="display: none; margin-top: 16px;">
+        <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+            <span class="phase-tag" data-phase="probe">🔍 探测</span>
+            <span class="phase-arrow">→</span>
+            <span class="phase-tag" data-phase="extract">📤 提取音轨</span>
+            <span class="phase-arrow">→</span>
+            <span class="phase-tag" data-phase="asr">🎙️ 语音识别</span>
+            <span class="phase-arrow">→</span>
+            <span class="phase-tag" data-phase="translate">🌐 翻译</span>
+            <span class="phase-arrow">→</span>
+            <span class="phase-tag" data-phase="mux">📦 封装</span>
+        </div>
+    </div>
+
+    {# 进度区 #}
+    <div id="pipeline-progress" style="display: none; margin-top: 16px;">
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+            <span class="spinner" id="pipeline-spin"></span>
+            <span id="pipeline-status" style="font-size: 0.9rem; color: var(--text-dim);">准备中...</span>
+            <span id="pipeline-elapsed" style="font-size: 0.8rem; color: var(--accent); margin-left: auto;"></span>
+        </div>
+        <div style="background: var(--bg); border-radius: 4px; height: 6px; overflow: hidden;">
+            <div id="pipeline-bar" style="height: 100%; width: 0%; background: var(--accent); border-radius: 4px; transition: width 0.3s;"></div>
+        </div>
+    </div>
+
+    {# ASR 实时片段区 #}
+    <div id="pipeline-asr-live" style="display: none; margin-top: 16px;">
+        <h4 style="font-size: 0.8rem; color: var(--text-dim); text-transform: uppercase; margin-bottom: 8px;">
+            📋 语音识别结果 <span id="pipeline-asr-count"></span>
+        </h4>
+        <div id="pipeline-asr-segments"
+             style="max-height: 240px; overflow-y: auto; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 0;">
+        </div>
+    </div>
+
+    {# 翻译实时结果区 #}
+    <div id="pipeline-trans-live" style="display: none; margin-top: 12px;">
+        <h4 style="font-size: 0.8rem; color: var(--text-dim); text-transform: uppercase; margin-bottom: 8px;">
+            🌐 翻译结果 <span id="pipeline-trans-count"></span>
+        </h4>
+        <div id="pipeline-trans-segments"
+             style="max-height: 240px; overflow-y: auto; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 0;">
+        </div>
+    </div>
+
+    {# 完成区 #}
+    <div id="pipeline-done" style="display: none; margin-top: 20px;"></div>
+</div>
+
+<style>
+.phase-tag {
+    font-size: 0.75rem;
+    padding: 4px 10px;
+    border-radius: 4px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    white-space: nowrap;
+}
+.phase-tag.active {
+    background: rgba(59,130,246,0.15);
+    border-color: var(--accent);
+    color: var(--accent);
+}
+.phase-tag.done {
+    background: rgba(74,222,128,0.1);
+    border-color: var(--green);
+    color: var(--green);
+}
+.phase-arrow {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    display: flex;
+    align-items: center;
+}
+</style>
+
+<script>
+let _pipelineSource = null;
+
+function startPipeline() {
+    var path = document.getElementById('video-path').value.trim();
+    if (!path) { alert('请先输入视频文件路径'); return; }
+    localStorage.setItem('pipeline_last_path', path);
+    var target = document.getElementById('target-language').value;
+    var source = document.getElementById('source-language').value;
+
+    // 重置 UI
+    document.getElementById('pipeline-phases').style.display = 'block';
+    document.getElementById('pipeline-progress').style.display = 'block';
+    document.getElementById('pipeline-asr-live').style.display = 'block';
+    document.getElementById('pipeline-trans-live').style.display = 'block';
+    document.getElementById('pipeline-done').style.display = 'none';
+    document.getElementById('pipeline-bar').style.width = '0%';
+    document.getElementById('pipeline-bar').style.background = 'var(--accent)';
+    document.getElementById('pipeline-status').textContent = '准备中...';
+    document.getElementById('pipeline-elapsed').textContent = '';
+    document.getElementById('pipeline-asr-count').textContent = '';
+    document.getElementById('pipeline-trans-count').textContent = '';
+    document.getElementById('pipeline-asr-segments').innerHTML = '';
+    document.getElementById('pipeline-trans-segments').innerHTML = '';
+    document.getElementById('pipeline-done').innerHTML = '';
+    document.getElementById('pipeline-btn').style.display = 'none';
+    document.getElementById('pipeline-cancel').style.display = 'inline-block';
+    document.getElementById('pipeline-spin').style.display = 'inline-block';
+
+    // 重置阶段指示器
+    document.querySelectorAll('.phase-tag').forEach(function(t) {
+        t.classList.remove('active', 'done');
+    });
+
+    // SSE 连接
+    var url = '/api/pipeline/run/stream';
+    var formData = new FormData();
+    formData.append('video_path', path);
+    formData.append('target_language', target);
+    if (source) formData.append('source_language', source);
+
+    _pipelineSource = new AbortController();
+
+    fetch(url, { method: 'POST', body: formData, signal: _pipelineSource.signal })
+        .then(function(response) {
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+            var reader = response.body.getReader();
+            var decoder = new TextDecoder();
+            var buffer = '';
+
+            function pump() {
+                return reader.read().then(function(result) {
+                    if (result.done) return;
+                    buffer += decoder.decode(result.value, {stream: true});
+                    var parts = buffer.split('\n\n');
+                    buffer = parts.pop();
+                    parts.forEach(function(msg) { handlePipelineSSE(msg); });
+                    return pump();
+                });
+            }
+            return pump();
+        })
+        .catch(function(err) {
+            if (err.name === 'AbortError') {
+                document.getElementById('pipeline-status').textContent = '已取消';
+            } else {
+                document.getElementById('pipeline-status').textContent = '❌ 连接错误: ' + err.message;
+            }
+            finishPipelineUI();
+        });
+}
+
+function cancelPipeline() {
+    if (_pipelineSource) _pipelineSource.abort();
+    _pipelineSource = null;
+}
+
+function handlePipelineSSE(msg) {
+    var lines = msg.split('\n');
+    var event = 'message', data = '';
+    lines.forEach(function(line) {
+        if (line.startsWith('event: ')) event = line.slice(7).trim();
+        else if (line.startsWith('data: ')) data = line.slice(6);
+    });
+    if (!data) return;
+
+    try { var payload = JSON.parse(data); } catch(e) { return; }
+
+    switch (event) {
+        case 'status':
+            document.getElementById('pipeline-status').textContent = payload.message;
+            // 高亮当前阶段
+            if (payload.phase) {
+                setActivePhase(payload.phase);
+            }
+            break;
+
+        case 'segment':
+            addASRSegment(payload);
+            updatePipelineProgress({elapsed: payload.elapsed});
+            break;
+
+        case 'translated':
+            addTranslatedBatch(payload);
+            break;
+
+        case 'progress':
+            updatePipelineProgress(payload);
+            break;
+
+        case 'done':
+            showPipelineDone(payload);
+            break;
+
+        case 'error':
+            document.getElementById('pipeline-status').textContent = '❌ ' + payload.message;
+            document.getElementById('pipeline-bar').style.background = 'rgba(248,113,113,0.5)';
+            finishPipelineUI();
+            break;
+    }
+}
+
+function setActivePhase(phase) {
+    var allPhases = ['probe', 'extract', 'asr', 'asr_done', 'translate', 'translate_done', 'mux'];
+    var idx = allPhases.indexOf(phase);
+    document.querySelectorAll('.phase-tag').forEach(function(tag) {
+        var p = tag.getAttribute('data-phase');
+        var pIdx = allPhases.indexOf(p);
+        if (pIdx < idx) {
+            tag.classList.add('done');
+            tag.classList.remove('active');
+        } else if (pIdx === idx || (phase === 'asr_done' && p === 'asr') || (phase === 'translate_done' && p === 'translate')) {
+            tag.classList.add('active');
+            tag.classList.remove('done');
+        } else {
+            tag.classList.remove('active', 'done');
+        }
+    });
+}
+
+function addASRSegment(seg) {
+    var container = document.getElementById('pipeline-asr-segments');
+    var div = document.createElement('div');
+    div.style.cssText = 'display:flex;gap:10px;padding:3px 12px;font-size:0.82rem;border-bottom:1px solid var(--border);';
+    var startMin = Math.floor(seg.start / 60), startSec = Math.floor(seg.start % 60);
+    var endMin = Math.floor(seg.end / 60), endSec = Math.floor(seg.end % 60);
+    div.innerHTML =
+        '<span style="color:var(--text-dim);white-space:nowrap;min-width:68px;font-family:monospace;font-size:0.75rem;">' +
+        pad2(startMin) + ':' + pad2(startSec) + '-' + pad2(endMin) + ':' + pad2(endSec) +
+        '</span>' +
+        '<span style="flex:1;">' + escHtml(seg.text) + '</span>' +
+        '<span style="color:var(--green);font-size:0.7rem;white-space:nowrap;">' +
+        (seg.confidence > 0 ? Math.round(seg.confidence * 100) + '%' : '') + '</span>';
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+    document.getElementById('pipeline-asr-count').textContent = '(' + (seg.index || '') + ' 片段)';
+}
+
+function addTranslatedBatch(data) {
+    var container = document.getElementById('pipeline-trans-segments');
+    var segs = data.segments || [];
+    segs.forEach(function(seg, i) {
+        var div = document.createElement('div');
+        div.style.cssText = 'display:flex;gap:8px;padding:3px 12px;font-size:0.82rem;border-bottom:1px solid var(--border);';
+        div.innerHTML =
+            '<span style="flex:1;color:var(--text-dim);">' + escHtml(seg.source_text) + '</span>' +
+            '<span style="font-size:0.7rem;color:var(--text-dim);">→</span>' +
+            '<span style="flex:1;color:var(--accent);">' + escHtml(seg.translated_text) + '</span>';
+        container.appendChild(div);
+    });
+    container.scrollTop = container.scrollHeight;
+    document.getElementById('pipeline-trans-count').textContent = '(' + document.getElementById('pipeline-trans-segments').children.length + ' 条)';
+}
+
+function updatePipelineProgress(p) {
+    if (p.elapsed) {
+        document.getElementById('pipeline-elapsed').textContent = Math.round(p.elapsed) + 's';
+    }
+}
+
+function showPipelineDone(d) {
+    document.getElementById('pipeline-bar').style.width = '100%';
+    document.getElementById('pipeline-bar').style.background = 'var(--green)';
+    document.getElementById('pipeline-spin').style.display = 'none';
+    document.getElementById('pipeline-status').textContent = '✅ 流水线完成';
+    document.getElementById('pipeline-elapsed').textContent = d.total_elapsed + 's · ' + d.total_segments + ' 片段';
+
+    // 所有阶段标记完成
+    document.querySelectorAll('.phase-tag').forEach(function(t) {
+        t.classList.add('done');
+        t.classList.remove('active');
+    });
+
+    // 完成区
+    var doneDiv = document.getElementById('pipeline-done');
+    doneDiv.style.display = 'block';
+    doneDiv.innerHTML =
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">' +
+
+        {# 译文 SRT 预览 #}
+        '<details style="flex:1;">' +
+        '<summary style="cursor:pointer;font-size:0.85rem;color:var(--accent);padding:6px 0;">📄 译文 SRT (' + d.total_segments + ' 条)</summary>' +
+        '<pre style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:16px;max-height:300px;overflow-y:auto;font-family:monospace;font-size:0.78rem;line-height:1.7;white-space:pre-wrap;color:var(--text);margin-top:6px;">' +
+        escHtml(d.srt_translated || '') + '</pre></details>' +
+
+        {# 原文 SRT 预览 #}
+        '<details style="flex:1;">' +
+        '<summary style="cursor:pointer;font-size:0.85rem;color:var(--text-dim);padding:6px 0;">📄 原文 SRT</summary>' +
+        '<pre style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:16px;max-height:300px;overflow-y:auto;font-family:monospace;font-size:0.78rem;line-height:1.7;white-space:pre-wrap;color:var(--text);margin-top:6px;">' +
+        escHtml(d.srt_original || '') + '</pre></details>' +
+
+        '</div>' +
+
+        {# 统计 #}
+        '<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px;font-size:0.82rem;color:var(--text-dim);">' +
+        '<span>源语言: <strong style="color:var(--text);">' + escHtml(d.source_language || 'auto') + '</strong></span>' +
+        '<span>目标语言: <strong style="color:var(--text);">' + escHtml(d.target_language) + '</strong></span>' +
+        '<span>输出: <strong style="color:var(--text);">' + escHtml(d.output_path || '') + '</strong></span>' +
+        '</div>' +
+
+        {# 按钮 #}
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+        '<button class="btn" onclick="downloadPipelineSRT()" style="font-size:0.85rem;">💾 下载译文 SRT</button>' +
+        '<a href="' + (d.download_url || '#') + '" class="btn" style="text-decoration:none;font-size:0.85rem;">📥 下载输出视频</a>' +
+        '</div>';
+
+    // 缓存数据
+    window._pipelineSRT = d.srt_translated || '';
+    window._pipelineOutput = d.output_path || '';
+
+    finishPipelineUI();
+}
+
+function downloadPipelineSRT() {
+    if (!window._pipelineSRT) return;
+    var name = (window._pipelineOutput || 'output').replace(/^.*[\\/]/, '').replace(/\.[^.]+$/, '') + '.srt';
+    var blob = new Blob([window._pipelineSRT], {type: 'text/plain;charset=utf-8'});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+function finishPipelineUI() {
+    document.getElementById('pipeline-btn').style.display = 'inline-block';
+    document.getElementById('pipeline-cancel').style.display = 'none';
+    document.getElementById('pipeline-spin').style.display = 'none';
+}
+
+function pad2(n) { return n < 10 ? '0' + n : '' + n; }
+function escHtml(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+// 恢复上次路径
+(function() {
+    var last = localStorage.getItem('pipeline_last_path');
+    if (last) document.getElementById('video-path').value = last;
+})();
+</script>
+{% endblock %}

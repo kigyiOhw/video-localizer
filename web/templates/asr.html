@@ -22,17 +22,20 @@
         <h3><span class="step-badge">2</span> 转写选项</h3>
         <div style="display: flex; gap: 16px; flex-wrap: wrap;">
             <div style="flex: 1; min-width: 180px;">
-                <label style="font-size: 0.8rem; color: var(--text-dim); display: block; margin-bottom: 4px;">语言</label>
+                <label style="font-size: 0.8rem; color: var(--text-dim); display: block; margin-bottom: 4px;">音频语言（视频里说的是什么语言）</label>
                 <select id="asr-language" name="language"
                         style="width: 100%; padding: 8px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); font-size: 0.9rem;">
-                    <option value="auto">自动检测</option>
-                    <option value="ja">日本語</option>
-                    <option value="zh">中文</option>
+                    <option value="auto" selected>自动检测（推荐）</option>
                     <option value="en">English</option>
+                    <option value="zh">中文</option>
+                    <option value="ja">日本語</option>
                     <option value="ko">한국어</option>
                     <option value="fr">Français</option>
                     <option value="de">Deutsch</option>
                 </select>
+                <div style="font-size: 0.7rem; color: var(--text-dim); margin-top: 4px;">
+                    ⚠️ 这是告诉 Whisper 音频的源语言，选错会导致乱码。如需翻译成其他语言，请等翻译模块。
+                </div>
             </div>
         </div>
     </div>
@@ -81,6 +84,7 @@ let _asrSource = null;
 function startASR() {
     var path = document.getElementById('asr-path').value.trim();
     if (!path) { alert('请先输入文件路径'); return; }
+    localStorage.setItem('asr_last_path', path);
     var lang = document.getElementById('asr-language').value;
 
     // 重置 UI
@@ -210,16 +214,75 @@ function showDone(d) {
     document.getElementById('asr-speed').textContent = d.language.toUpperCase() + ' · ' + d.total_segments + '片段 · ' + d.speed;
     document.getElementById('asr-progress-text').textContent = '模型: ' + d.model + ' · 设备: ' + d.device + ' · 耗时 ' + d.elapsed + 's';
 
-    // SRT 预览
+    // 生成默认输出文件名
+    var videoPath = document.getElementById('asr-path').value.trim();
+    var baseName = videoPath.replace(/^.*[\\/]/, '').replace(/\.[^.]+$/, '');
+    var langCode = d.language || 'und';
+    var srtName = baseName + '.' + langCode + '.srt';
+
+    // SRT 预览 + 操作按钮
     var doneDiv = document.getElementById('asr-done');
     doneDiv.style.display = 'block';
     doneDiv.innerHTML =
-        '<details open style="margin-top:8px;">' +
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">' +
+        '<details style="flex:1;">' +
         '<summary style="cursor:pointer;font-size:0.85rem;color:var(--accent);padding:6px 0;">📄 SRT 字幕 (' + d.total_segments + ' 条)</summary>' +
         '<div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:16px;max-height:300px;overflow-y:auto;font-family:monospace;font-size:0.8rem;line-height:1.7;white-space:pre-wrap;color:var(--text);margin-top:6px;">' +
-        escHtml(d.srt || '') + '</div></details>';
+        escHtml(d.srt || '') + '</div></details>' +
+        '</div>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+        '<button class="btn" onclick="downloadSRT(\'' + srtName + '\')" style="font-size:0.85rem;">💾 下载 SRT</button>' +
+        '<button class="btn" onclick="saveSRTToFile(\'' + srtName + '\')" style="font-size:0.85rem;">📁 保存到输出目录</button>' +
+        '</div>';
+
+    // 缓存 SRT 数据供按钮使用
+    window._lastSRT = d.srt || '';
+    window._lastSRTName = srtName;
+    window._lastVideoPath = videoPath;
 
     finishUI();
+}
+
+function downloadSRT(filename) {
+    if (!window._lastSRT) return;
+    var blob = new Blob([window._lastSRT], {type: 'text/plain;charset=utf-8'});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+async function saveSRTToFile(filename) {
+    if (!window._lastSRT) return;
+    var btn = event.target;
+    btn.disabled = true;
+    btn.textContent = '保存中...';
+    try {
+        var resp = await fetch('/api/asr/save', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                srt_content: window._lastSRT,
+                file_name: filename,
+                video_path: window._lastVideoPath
+            })
+        });
+        var data = await resp.json();
+        if (data.success) {
+            btn.textContent = '✅ 已保存: ' + data.file_path;
+            btn.style.background = 'rgba(74,222,128,0.15)';
+        } else {
+            btn.textContent = '❌ ' + (data.error || '保存失败');
+            btn.disabled = false;
+        }
+    } catch(e) {
+        btn.textContent = '❌ 网络错误';
+        btn.disabled = false;
+    }
 }
 
 function finishUI() {
@@ -230,5 +293,11 @@ function finishUI() {
 
 function pad2(n) { return n < 10 ? '0' + n : '' + n; }
 function escHtml(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+// 恢复上次使用的文件路径
+(function() {
+    var last = localStorage.getItem('asr_last_path');
+    if (last) document.getElementById('asr-path').value = last;
+})();
 </script>
 {% endblock %}

@@ -1,0 +1,308 @@
+{% extends "base.html" %}
+{% block title %}翻译 - Video-Localizer{% endblock %}
+
+{% block content %}
+<div class="probe-panel">
+    <h2>🌐 字幕翻译</h2>
+    <p class="desc" style="margin-bottom: 20px;">将 ASR 生成的字幕翻译为目标语言（LLM 翻译，保持时间戳不变）</p>
+
+    {# 步骤 1: 输入字幕 #}
+    <div class="extract-step">
+        <h3><span class="step-badge">1</span> 输入源字幕</h3>
+        <div class="path-input-row">
+            <input type="text" id="translate-srt-path" name="srt_path"
+                   placeholder="SRT 文件路径，如 /media/input/subtitle.srt">
+        </div>
+        <div style="margin-top: 12px;">
+            <textarea id="translate-srt-text" name="srt_text"
+                      placeholder="或直接粘贴 SRT 内容..."
+                      style="width: 100%; min-height: 140px; padding: 10px 14px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); font-family: 'SF Mono', Consolas, monospace; font-size: 0.82rem; resize: vertical;"></textarea>
+        </div>
+        <div class="path-hint" style="margin-top: 6px;">输入 SRT 文件路径，或直接粘贴 SRT 文本（二选一）</div>
+    </div>
+
+    {# 步骤 2: 翻译选项 #}
+    <div class="extract-step">
+        <h3><span class="step-badge">2</span> 翻译选项</h3>
+        <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 180px;">
+                <label style="font-size: 0.8rem; color: var(--text-dim); display: block; margin-bottom: 4px;">源语言（可留空自动检测）</label>
+                <select id="translate-source-lang" name="source_language"
+                        style="width: 100%; padding: 8px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); font-size: 0.9rem;">
+                    <option value="">自动检测</option>
+                    <option value="English">English</option>
+                    <option value="Chinese">中文</option>
+                    <option value="Japanese">日本語</option>
+                    <option value="Korean">한국어</option>
+                    <option value="French">Français</option>
+                    <option value="German">Deutsch</option>
+                </select>
+            </div>
+            <div style="flex: 1; min-width: 180px;">
+                <label style="font-size: 0.8rem; color: var(--text-dim); display: block; margin-bottom: 4px;">目标语言</label>
+                <select id="translate-target-lang" name="target_language"
+                        style="width: 100%; padding: 8px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); font-size: 0.9rem;">
+                    <option value="Chinese" selected>中文 (Chinese)</option>
+                    <option value="English">English</option>
+                    <option value="Japanese">日本語 (Japanese)</option>
+                    <option value="Korean">한국어 (Korean)</option>
+                    <option value="French">Français</option>
+                    <option value="German">Deutsch</option>
+                    <option value="Spanish">Español</option>
+                    <option value="Portuguese">Português</option>
+                    <option value="Russian">Русский</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    {# 步骤 3: 操作 #}
+    <div class="extract-actions">
+        <button class="btn btn-primary" id="translate-btn" onclick="startTranslate()">
+            🌐 开始翻译
+        </button>
+        <button class="btn" id="translate-cancel" onclick="cancelTranslate()"
+                style="display: none; background: rgba(248,113,113,0.15); color: #fca5a5;">
+            ✕ 取消
+        </button>
+    </div>
+
+    {# 进度区 #}
+    <div id="translate-progress" style="display: none; margin-top: 20px;">
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+            <span class="spinner" id="translate-spin"></span>
+            <span id="translate-status" style="font-size: 0.9rem; color: var(--text-dim);">准备中...</span>
+            <span id="translate-speed" style="font-size: 0.8rem; color: var(--accent); margin-left: auto;"></span>
+        </div>
+        <div style="background: var(--bg); border-radius: 4px; height: 6px; overflow: hidden;">
+            <div id="translate-bar" style="height: 100%; width: 0%; background: var(--accent); border-radius: 4px; transition: width 0.3s;"></div>
+        </div>
+        <div id="translate-progress-text" style="font-size: 0.75rem; color: var(--text-dim); margin-top: 4px;"></div>
+    </div>
+
+    {# 实时翻译区 #}
+    <div id="translate-live" style="display: none; margin-top: 16px;">
+        <h4 style="font-size: 0.8rem; color: var(--text-dim); text-transform: uppercase; margin-bottom: 8px;">
+            📋 翻译结果 <span id="translate-count"></span>
+        </h4>
+        <div id="translate-segments"
+             style="max-height: 420px; overflow-y: auto; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 0;">
+        </div>
+    </div>
+
+    {# 完成区 #}
+    <div id="translate-done" style="display: none; margin-top: 20px;"></div>
+</div>
+
+<script>
+let _translateAbort = null;
+
+function startTranslate() {
+    var srtPath = document.getElementById('translate-srt-path').value.trim();
+    var srtText = document.getElementById('translate-srt-text').value.trim();
+    var targetLang = document.getElementById('translate-target-lang').value;
+    var sourceLang = document.getElementById('translate-source-lang').value;
+
+    if (!srtPath && !srtText) { alert('请提供 SRT 文件路径或粘贴 SRT 内容'); return; }
+
+    // 重置 UI
+    document.getElementById('translate-progress').style.display = 'block';
+    document.getElementById('translate-live').style.display = 'block';
+    document.getElementById('translate-done').style.display = 'none';
+    document.getElementById('translate-bar').style.width = '0%';
+    document.getElementById('translate-progress-text').textContent = '';
+    document.getElementById('translate-status').textContent = '准备中...';
+    document.getElementById('translate-speed').textContent = '';
+    document.getElementById('translate-count').textContent = '';
+    document.getElementById('translate-segments').innerHTML = '';
+    document.getElementById('translate-done').innerHTML = '';
+    document.getElementById('translate-btn').style.display = 'none';
+    document.getElementById('translate-cancel').style.display = 'inline-block';
+
+    var formData = new FormData();
+    if (srtPath) formData.append('srt_path', srtPath);
+    if (srtText) formData.append('srt_text', srtText);
+    formData.append('target_language', targetLang);
+    if (sourceLang) formData.append('source_language', sourceLang);
+
+    _translateAbort = new AbortController();
+
+    fetch('/api/translate/stream', {
+        method: 'POST',
+        body: formData,
+        signal: _translateAbort.signal,
+    })
+        .then(function(response) {
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+            var reader = response.body.getReader();
+            var decoder = new TextDecoder();
+            var buffer = '';
+
+            function pump() {
+                return reader.read().then(function(result) {
+                    if (result.done) return;
+                    buffer += decoder.decode(result.value, {stream: true});
+                    var parts = buffer.split('\n\n');
+                    buffer = parts.pop();
+                    parts.forEach(function(msg) { handleTranslateSSE(msg); });
+                    return pump();
+                });
+            }
+            return pump();
+        })
+        .catch(function(err) {
+            if (err.name === 'AbortError') {
+                document.getElementById('translate-status').textContent = '已取消';
+            } else {
+                document.getElementById('translate-status').textContent = '连接错误: ' + err.message;
+            }
+            finishTranslateUI();
+        });
+}
+
+function cancelTranslate() {
+    if (_translateAbort) _translateAbort.abort();
+    _translateAbort = null;
+}
+
+function handleTranslateSSE(msg) {
+    var lines = msg.split('\n');
+    var event = 'message', data = '';
+    lines.forEach(function(line) {
+        if (line.startsWith('event: ')) event = line.slice(7).trim();
+        else if (line.startsWith('data: ')) data = line.slice(6);
+    });
+    if (!data) return;
+
+    try { var payload = JSON.parse(data); } catch(e) { return; }
+
+    switch (event) {
+        case 'status':
+            document.getElementById('translate-status').textContent = payload.message;
+            break;
+
+        case 'translated':
+            addTranslatedSegment(payload);
+            break;
+
+        case 'progress':
+            updateTranslateProgress(payload);
+            break;
+
+        case 'done':
+            showTranslateDone(payload);
+            break;
+
+        case 'error':
+            document.getElementById('translate-status').textContent = '❌ ' + payload.message;
+            document.getElementById('translate-bar').style.background = 'rgba(248,113,113,0.5)';
+            finishTranslateUI();
+            break;
+    }
+}
+
+function addTranslatedSegment(seg) {
+    var container = document.getElementById('translate-segments');
+    var div = document.createElement('div');
+    div.style.cssText = 'display:flex;gap:8px;padding:6px 12px;font-size:0.84rem;border-bottom:1px solid var(--border);';
+
+    var startMin = Math.floor(seg.start / 60), startSec = Math.floor(seg.start % 60);
+    var endMin = Math.floor(seg.end / 60), endSec = Math.floor(seg.end % 60);
+    var timeStr = pad2(startMin) + ':' + pad2(startSec) + '-' + pad2(endMin) + ':' + pad2(endSec);
+
+    div.innerHTML =
+        '<span style="color:var(--text-dim);white-space:nowrap;min-width:72px;font-family:monospace;font-size:0.75rem;">' + timeStr + '</span>' +
+        '<span style="flex:1;color:var(--text-dim);">' + escHtml(seg.source_text) + '</span>' +
+        '<span style="flex:1;color:var(--accent);">' + escHtml(seg.translated_text || '...') + '</span>';
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+}
+
+function updateTranslateProgress(p) {
+    document.getElementById('translate-bar').style.width = (p.progress_pct || 0) + '%';
+    if (p.segments_completed) document.getElementById('translate-count').textContent = '(' + p.segments_completed + '/' + p.total_segments + ' 条)';
+    if (p.elapsed) document.getElementById('translate-progress-text').textContent = '第 ' + (p.batch || 0) + ' 批 · 耗时 ' + p.elapsed + 's';
+}
+
+function showTranslateDone(d) {
+    document.getElementById('translate-bar').style.width = '100%';
+    document.getElementById('translate-bar').style.background = 'var(--green)';
+    document.getElementById('translate-spin').style.display = 'none';
+    document.getElementById('translate-status').textContent = '✅ 翻译完成';
+    document.getElementById('translate-speed').textContent = d.engine + ' · ' + d.model + ' · ' + d.total_segments + ' 条';
+    document.getElementById('translate-progress-text').textContent = '耗时 ' + d.elapsed + 's';
+
+    // 生成默认文件名
+    var tgtLang = document.getElementById('translate-target-lang').value || 'translated';
+    var srtName = 'translated.' + tgtLang.toLowerCase() + '.srt';
+
+    // SRT 预览 + 操作按钮
+    var doneDiv = document.getElementById('translate-done');
+    doneDiv.style.display = 'block';
+    doneDiv.innerHTML =
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">' +
+        '<details style="flex:1;">' +
+        '<summary style="cursor:pointer;font-size:0.85rem;color:var(--accent);padding:6px 0;">📄 译文 SRT (' + d.total_segments + ' 条)</summary>' +
+        '<div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:16px;max-height:300px;overflow-y:auto;font-family:monospace;font-size:0.8rem;line-height:1.7;white-space:pre-wrap;color:var(--text);margin-top:6px;">' +
+        escHtml(d.srt || '') + '</div></details>' +
+        '</div>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+        '<button class="btn" onclick="downloadTranslatedSRT(\'' + srtName + '\')" style="font-size:0.85rem;">💾 下载 SRT</button>' +
+        '<button class="btn" onclick="saveTranslatedSRT(\'' + srtName + '\')" style="font-size:0.85rem;">📁 保存到输出目录</button>' +
+        '</div>';
+
+    window._lastTranslatedSRT = d.srt || '';
+    window._lastTranslatedSRTName = srtName;
+
+    finishTranslateUI();
+}
+
+function downloadTranslatedSRT(filename) {
+    if (!window._lastTranslatedSRT) return;
+    var blob = new Blob([window._lastTranslatedSRT], {type: 'text/plain;charset=utf-8'});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+async function saveTranslatedSRT(filename) {
+    if (!window._lastTranslatedSRT) return;
+    var btn = event.target;
+    btn.disabled = true;
+    btn.textContent = '保存中...';
+    try {
+        var resp = await fetch('/api/asr/save', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                srt_content: window._lastTranslatedSRT,
+                file_name: filename,
+            })
+        });
+        var data = await resp.json();
+        if (data.success) {
+            btn.textContent = '✅ 已保存: ' + data.file_path;
+            btn.style.background = 'rgba(74,222,128,0.15)';
+        } else {
+            btn.textContent = '❌ ' + (data.error || '保存失败');
+            btn.disabled = false;
+        }
+    } catch(e) {
+        btn.textContent = '❌ 网络错误';
+        btn.disabled = false;
+    }
+}
+
+function finishTranslateUI() {
+    document.getElementById('translate-btn').style.display = 'inline-block';
+    document.getElementById('translate-cancel').style.display = 'none';
+    document.getElementById('translate-spin').style.display = 'none';
+}
+
+function pad2(n) { return n < 10 ? '0' + n : '' + n; }
+function escHtml(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+</script>
+{% endblock %}

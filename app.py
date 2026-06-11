@@ -153,6 +153,33 @@ async def asr_page(request: Request):
     })
 
 
+@app.get("/subtitle")
+async def subtitle_page(request: Request):
+    """字幕管理页面。"""
+    logger.debug("GET /subtitle")
+    return templates.TemplateResponse(request, "subtitle.html", {
+        "version": __version__,
+    })
+
+
+@app.get("/translate")
+async def translate_page(request: Request):
+    """翻译页面。"""
+    logger.debug("GET /translate")
+    return templates.TemplateResponse(request, "translate.html", {
+        "version": __version__,
+    })
+
+
+@app.get("/pipeline")
+async def pipeline_page(request: Request):
+    """端到端流水线页面。"""
+    logger.debug("GET /pipeline")
+    return templates.TemplateResponse(request, "pipeline.html", {
+        "version": __version__,
+    })
+
+
 @app.get("/api/health")
 async def health():
     """健康检查 + 当前配置信息（JSON）。"""

@@ -24,6 +24,17 @@ from web.api.asr import router as asr_router  # noqa: E402
 
 router.include_router(asr_router, tags=["asr"])
 
-# 后续 Stage 在此追加：
-# router.include_router(subtitle_router, tags=["subtitle"])
-# ...
+# Stage 4: 字幕添加
+from web.api.subtitle import router as subtitle_router  # noqa: E402
+
+router.include_router(subtitle_router, tags=["subtitle"])
+
+# Stage 10: 翻译引擎
+from web.api.translate import router as translate_router  # noqa: E402
+
+router.include_router(translate_router, tags=["translate"])
+
+# Stage 11: 端到端流水线
+from web.api.pipeline import router as pipeline_router  # noqa: E402
+
+router.include_router(pipeline_router, tags=["pipeline"])

@@ -1,0 +1,65 @@
+{# HTMX fragment — 翻译结果或错误信息 #}
+
+{% if error %}
+<div class="error-message">
+    <span class="error-icon">⚠️</span>
+    <div>
+        <strong>翻译失败</strong>
+        <p>{{ error }}</p>
+    </div>
+</div>
+{% elif result %}
+<div class="success-card">
+    <h3>✅ 翻译完成</h3>
+    <div class="success-grid">
+        <div class="success-item">
+            <span class="success-label">原文字幕条数</span>
+            <span class="success-value">{{ result.source_count }}</span>
+        </div>
+        <div class="success-item">
+            <span class="success-label">翻译条数</span>
+            <span class="success-value">{{ result.translated_count }}</span>
+        </div>
+        <div class="success-item">
+            <span class="success-label">目标语言</span>
+            <span class="success-value">{{ result.target_language }}</span>
+        </div>
+        <div class="success-item">
+            <span class="success-label">引擎</span>
+            <span class="success-value">{{ result.engine }} / {{ result.model }}</span>
+        </div>
+        <div class="success-item">
+            <span class="success-label">耗时</span>
+            <span class="success-value">{{ result.elapsed }}s</span>
+        </div>
+    </div>
+
+    {# 双语对照片段列表 #}
+    <details style="margin-bottom: 12px;">
+        <summary style="cursor:pointer;font-size:0.85rem;color:var(--accent);padding:6px 0;">
+            查看翻译对照 ({{ result.segments | length }} 条)
+        </summary>
+        <div style="max-height: 300px; overflow-y: auto; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px;">
+            {% for seg in result.segments %}
+            <div style="display: flex; gap: 8px; padding: 4px 8px; font-size: 0.82rem; border-bottom: 1px solid var(--border);">
+                <span style="flex: 1; color: var(--text-dim);">{{ seg.source_text }}</span>
+                <span style="font-size: 0.7rem; color: var(--text-dim);">→</span>
+                <span style="flex: 1; color: var(--accent);">{{ seg.translated_text }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </details>
+
+    {# SRT 预览 #}
+    <details style="margin-bottom: 16px;">
+        <summary style="cursor:pointer;font-size:0.85rem;color:var(--accent);padding:6px 0;">📄 译文 SRT 预览</summary>
+        <pre style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:16px;max-height:300px;overflow-y:auto;font-family:monospace;font-size:0.8rem;line-height:1.7;white-space:pre-wrap;color:var(--text);margin-top:6px;">{{ result.srt }}</pre>
+    </details>
+
+    <button class="btn" onclick="this.previousElementSibling.previousElementSibling.open=true;var s=this.previousElementSibling.previousElementSibling.querySelector('pre').textContent;var b=new Blob([s],{type:'text/plain;charset=utf-8'});var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='translated.srt';a.click()">
+        💾 下载 SRT
+    </button>
+</div>
+{% else %}
+<div class="empty-select">🤔 没有返回结果</div>
+{% endif %}

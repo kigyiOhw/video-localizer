@@ -1,0 +1,81 @@
+{# HTMX fragment — 流水线结果或错误信息 #}
+
+{% if error %}
+<div class="error-message">
+    <span class="error-icon">⚠️</span>
+    <div>
+        <strong>流水线执行失败</strong>
+        <p>{{ error }}</p>
+    </div>
+</div>
+{% elif result %}
+<div class="success-card">
+    <h3>✅ 流水线完成</h3>
+    <div class="success-grid">
+        <div class="success-item">
+            <span class="success-label">总片段数</span>
+            <span class="success-value">{{ result.total_segments }}</span>
+        </div>
+        <div class="success-item">
+            <span class="success-label">源语言</span>
+            <span class="success-value">{{ result.source_language }}</span>
+        </div>
+        <div class="success-item">
+            <span class="success-label">目标语言</span>
+            <span class="success-value">{{ result.target_language }}</span>
+        </div>
+        <div class="success-item">
+            <span class="success-label">ASR 耗时</span>
+            <span class="success-value">{{ result.asr_elapsed }}s</span>
+        </div>
+        <div class="success-item">
+            <span class="success-label">翻译耗时</span>
+            <span class="success-value">{{ result.translate_elapsed }}s</span>
+        </div>
+        <div class="success-item">
+            <span class="success-label">总耗时</span>
+            <span class="success-value">{{ result.total_elapsed }}s</span>
+        </div>
+        <div class="success-item">
+            <span class="success-label">输出大小</span>
+            <span class="success-value">{{ "%.1f MB" | format(result.output_size / 1048576) }}</span>
+        </div>
+    </div>
+
+    {# 双语对照片段列表 #}
+    <details style="margin-bottom: 12px;">
+        <summary style="cursor:pointer;font-size:0.85rem;color:var(--accent);padding:6px 0;">
+            查看翻译对照 ({{ result.segments | length }} 条)
+        </summary>
+        <div style="max-height: 300px; overflow-y: auto; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px;">
+            {% for seg in result.segments %}
+            <div style="display: flex; gap: 8px; padding: 4px 8px; font-size: 0.82rem; border-bottom: 1px solid var(--border);">
+                <span style="flex: 1; color: var(--text-dim);">{{ seg.source_text }}</span>
+                <span style="font-size: 0.7rem; color: var(--text-dim);">→</span>
+                <span style="flex: 1; color: var(--accent);">{{ seg.translated_text }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </details>
+
+    {# SRT 预览 #}
+    <details style="margin-bottom: 16px;">
+        <summary style="cursor:pointer;font-size:0.85rem;color:var(--accent);padding:6px 0;">📄 译文 SRT 预览</summary>
+        <pre style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:16px;max-height:300px;overflow-y:auto;font-family:monospace;font-size:0.8rem;line-height:1.7;white-space:pre-wrap;color:var(--text);margin-top:6px;">{{ result.srt_translated }}</pre>
+    </details>
+
+    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <button class="btn" onclick="navigator.clipboard.writeText(document.getElementById('srt-content').textContent);this.textContent='✅ 已复制';setTimeout(()=>this.textContent='📋 复制 SRT',2000)">
+            📋 复制 SRT
+        </button>
+        <a href="{{ result.download_url }}" class="btn" style="text-decoration:none;">
+            📥 下载输出文件
+        </a>
+    </div>
+
+    {# 隐藏的 SRT 文本供复制 #}
+    <pre id="srt-content" style="display:none;">{{ result.srt_translated }}</pre>
+</div>
+{% else %}
+<div class="empty-select">🤔 没有返回结果</div>
+{% endif %}

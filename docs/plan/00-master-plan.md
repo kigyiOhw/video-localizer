@@ -1,18 +1,20 @@
 # Video-Localizer 总体实现计划
 
-> 最后更新: 2026-06-07
+> 最后更新: 2026-06-11
 
 ## 1. 项目现状
 
 | 维度 | 状态 |
 |------|------|
-| 运行环境 | Python 3.14 + FFmpeg 8.1.1 + Docker |
-| Docker | 已安装，用于运行 Web 服务 |
-| 依赖包 | 29 个包已安装 |
-| ASR 模型 | faster-whisper large-v3 (~3GB) 已下载 |
-| 源代码 | **零** — 所有模块目录为空 |
-| 设计文档 | 6 份 (`docs/00-05`) 已完成 |
-| Git | 已 `git init`，未提交 |
+| 运行环境 | Python 3.14 + FFmpeg 8.1.1，Windows 11 Home |
+| Docker | 已安装，当前直接在 Windows 原生运行 (`python app.py`) |
+| 依赖包 | 已安装（含 faster-whisper, ctranslate2, silero-vad, nvidia-cublas-cu12, httpx） |
+| ASR 模型 | faster-whisper large-v3 (~3GB) 已下载，GPU (CUDA) 推理正常 |
+| 已完成 Stage | 1 / 2 / 3 / 4 / 9 / 10 / 11 |
+| 当前待做 | **P2: 字幕格式转换** (SRT↔ASS↔WebVTT) |
+| 设计文档 | 6 份 (`docs/00-05`) |
+| 实施记录 | 1 份 (`docs/notes/01-asr-issues.md`) |
+| Git | 有提交历史，当前有未提交变更 (Stage 10) |
 
 ## 2. 部署架构
 
@@ -61,20 +63,20 @@
 ## 5. 开发阶段
 
 ```
-Stage 1: Web 框架 + 配置 + Docker  → 页面可访问, 配置可加载
-Stage 2: FFprobe 探头探测
-Stage 3: 流提取
-Stage 4: 添加软字幕
-Stage 5: 切换默认轨道
-Stage 6: 字幕格式转换 (SRT↔ASS↔WebVTT)
-Stage 7: 音频轨管理 + 音画同步    ← 含 offset/speed 调整
-Stage 8: 硬字幕烧录
-Stage 9: ASR 引擎 (faster-whisper) + GPU Worker
-Stage 10: 翻译引擎 (LLM API)
-Stage 11: 字幕生成器
-Stage 12: TTS 引擎 (Edge-TTS)
-Stage 13: 音频对齐
-Stage 14: 端到端流水线
+✅ Stage 1: Web 框架 + 配置 + Docker
+✅ Stage 2: FFprobe 探头探测
+✅ Stage 3: 流提取
+✅ Stage 4: 添加软字幕 (SRT → MKV/MP4)
+⬜ Stage 5: 切换默认轨道
+⬜ Stage 6: 字幕格式转换 (SRT↔ASS↔WebVTT)
+⬜ Stage 7: 音频轨管理 + 音画同步
+⬜ Stage 8: 硬字幕烧录
+✅ Stage 9: ASR 引擎 (faster-whisper), SSE 流式, GPU CUDA
+✅ Stage 10: 翻译引擎 (LLM API + Ollama)
+✅ Stage 11: 端到端流水线 (ASR→翻译→封装)
+⬜ Stage 12: TTS 引擎 (Edge-TTS)
+⬜ Stage 13: 音频对齐
+⬜ Stage 14: 端到端流水线
 ```
 
 ### 依赖关系

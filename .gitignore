@@ -82,3 +82,5 @@ models/
 .env
 .env.local
 config/settings.local.yaml
+
+/docs
