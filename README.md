@@ -105,31 +105,6 @@ python worker.py
 # → http://localhost:9001 (CUDA inference endpoint)
 ```
 
-## Configuration
-
-Two-layer config system:
-
-| File | Purpose | Tracked |
-|------|---------|---------|
-| `config/settings.yaml` | Default settings + 5 hardware profiles | ✅ Git |
-| `config/settings.local.yaml` | Personal overrides (paths, keys) | ❌ Gitignored |
-
-### Hardware Profiles (auto-selected by VRAM)
-
-| Profile | VRAM | ASR Model | Device | Translate |
-|---------|------|-----------|--------|------------|
-| `gpu_ultra` | ≥16 GB | large-v3-turbo | CUDA fp16 | Local LLM |
-| `gpu_high` | 8–16 GB | large-v3 | CUDA int8_fp16 | LLM API |
-| `gpu_medium` | 4–8 GB | medium | CUDA int8 | LLM API |
-| `gpu_low` | 2–4 GB | small | CUDA int8 | — |
-| `cpu` | N/A | tiny | CPU int8 | — |
-
-The profile is auto-detected at startup via `config/requirements.py`. Override it in `config/settings.local.yaml`:
-
-```yaml
-selected_profile: gpu_high
-```
-
 ## Web UI
 
 | Page | Route | Description |
@@ -297,31 +272,6 @@ python app.py
 ```bash
 python worker.py
 # → http://localhost:9001（CUDA 推理端点）
-```
-
-## 配置说明
-
-双层配置系统：
-
-| 文件 | 用途 | 版本管理 |
-|------|------|----------|
-| `config/settings.yaml` | 默认配置 + 5 档硬件配置 | ✅ 提交 |
-| `config/settings.local.yaml` | 个人覆盖（路径、密钥） | ❌ gitignored |
-
-### 硬件配置档（根据 VRAM 自动选择）
-
-| 配置档 | 显存 | ASR 模型 | 设备 | 翻译 |
-|--------|------|----------|------|------|
-| `gpu_ultra` | ≥16 GB | large-v3-turbo | CUDA fp16 | 本地 LLM |
-| `gpu_high` | 8–16 GB | large-v3 | CUDA int8_fp16 | LLM API |
-| `gpu_medium` | 4–8 GB | medium | CUDA int8 | LLM API |
-| `gpu_low` | 2–4 GB | small | CUDA int8 | — |
-| `cpu` | 无 | tiny | CPU int8 | — |
-
-启动时通过 `config/requirements.py` 自动检测并选择配置档。可在 `config/settings.local.yaml` 中手动指定：
-
-```yaml
-selected_profile: gpu_high
 ```
 
 ## Web 界面
