@@ -127,6 +127,8 @@ python worker.py
 | Translate | `/translate` | LLM translation (SSE) |
 | Pipeline | `/pipeline` | End-to-end ASR→Translate→Mux |
 
+| Track | `/track` | Switch default video/audio/subtitle track |
+
 API docs: `/docs` (Swagger UI)
 
 ## Development Progress
@@ -136,7 +138,7 @@ API docs: `/docs` (Swagger UI)
 ✅ Stage 2   — FFprobe stream detection
 ✅ Stage 3   — Stream extraction
 ✅ Stage 4   — Soft subtitle mux (SRT → MKV/MP4)
-⬜ Stage 5   — Switch default track
+✅ Stage 5   — Switch default track
 ⬜ Stage 6   — Subtitle format conversion (SRT↔ASS↔WebVTT)
 ⬜ Stage 7   — Audio track management + sync
 ⬜ Stage 8   — Hard subtitle burn-in

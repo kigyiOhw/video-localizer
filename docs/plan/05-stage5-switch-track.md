@@ -117,8 +117,8 @@ ffmpeg -y -i input.mkv -map 0 -c copy \
 
 ## 验证结果
 
-- [ ] `compileall` 通过。
-- [ ] `pytest tests/test_track.py -v` 通过。
+- [x] `compileall` 通过（`processing/core/mux.py`, `web/api/track.py`, `web/api/__init__.py`, `app.py`, `tests/test_track.py`）。
+- [ ] `pytest tests/test_track.py -v` 通过（待环境就绪后运行）。
 - [ ] 手工验证：使用含多音轨/字幕轨的测试视频调用 `/api/track/default`，输出文件默认轨道正确。
 
 ## 踩坑记录
@@ -130,4 +130,5 @@ ffmpeg -y -i input.mkv -map 0 -c copy \
 ---
 
 *计划日期: 2026-06-13*
-*状态: 待实现*
+*实现日期: 2026-06-13*
+*状态: 已实现*

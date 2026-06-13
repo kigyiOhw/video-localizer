@@ -11,7 +11,7 @@
 | 依赖包 | 已安装（含 faster-whisper, ctranslate2, silero-vad, nvidia-cublas-cu12, httpx） |
 | ASR 模型 | faster-whisper large-v3 (~3GB) 已下载，GPU (CUDA) 推理正常 |
 | 已完成 Stage | 1 / 2 / 3 / 4 / 9 / 10 / 11 |
-| 当前待做 | **Stage 5: 切换默认轨道**；并行收尾审计遗留 P1/P2 修复 |
+| 当前待做 | **Stage 6: 字幕格式转换** (SRT↔ASS↔WebVTT) |
 | 审核修复 | P0/P1 已完成并提交；剩余 P2/P3 见下方任务队列 |
 | 设计文档 | 6 份 (`docs/00-05`) |
 | 实施记录 | 1 份 (`docs/notes/01-asr-issues.md`) |
@@ -68,7 +68,7 @@
 ✅ Stage 2: FFprobe 探头探测
 ✅ Stage 3: 流提取
 ✅ Stage 4: 添加软字幕 (SRT → MKV/MP4)
-⬜ Stage 5: 切换默认轨道
+✅ Stage 5: 切换默认轨道
 ⬜ Stage 6: 字幕格式转换 (SRT↔ASS↔WebVTT)
 ⬜ Stage 7: 音频轨管理 + 音画同步
 ⬜ Stage 8: 硬字幕烧录
