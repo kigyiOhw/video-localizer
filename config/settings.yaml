@@ -39,6 +39,8 @@ tts:
   engine: edge_tts
 
 translate:
+  # 默认禁用翻译；使用 /translate 或 /pipeline 前需在 settings.local.yaml 中启用
+  # 可选值: llm (OpenAI 兼容 API), llm_local (Ollama), none
   engine: none
   target_language: zho
   source_language: ""

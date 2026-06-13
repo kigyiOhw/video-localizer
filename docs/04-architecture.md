@@ -33,33 +33,23 @@ video-localizer/
 ├── engines/                 # AI 引擎层（策略模式）
 │   ├── asr/                 #   语音识别
 │   │   ├── engine.py        #   抽象接口
-│   │   ├── whisper_local.py #   faster-whisper 本地实现
-│   │   └── whisper_api.py   #   OpenAI Whisper API 实现
-│   ├── tts/                 #   语音合成
-│   │   ├── engine.py        #   抽象接口
-│   │   ├── edge_tts.py      #   Edge-TTS 实现
-│   │   ├── xtts.py          #   Coqui XTTS 实现
-│   │   └── align.py         #   音频时间轴对齐
+│   │   └── whisper_local.py #   faster-whisper 本地实现
+│   ├── tts/                 #   语音合成（Stage 12 实现）
+│   │   └── engine.py        #   抽象接口
 │   ├── translate/           #   翻译
 │   │   ├── engine.py        #   抽象接口
 │   │   ├── llm.py           #   LLM 翻译（OpenAI/DeepSeek/Ollama）
-│   │   └── deepl.py         #   DeepL API 实现
+│   │   └── llm_local.py     #   本地 Ollama 封装
 │   └── __init__.py
 │
 ├── processing/              # 媒体处理层
 │   ├── core/                #   核心视频处理
 │   │   ├── probe.py         #   视频流探测（ffprobe）
 │   │   ├── extract.py       #   提取音频/字幕/视频流
-│   │   ├── mux.py           #   封装（添加/移除流、设置默认轨）
-│   │   └── burn.py          #   烧录硬字幕
-│   ├── subtitle/            #   字幕处理
-│   │   ├── srt.py           #   SRT 解析/生成/合并
-│   │   ├── ass.py           #   ASS 高级字幕
-│   │   └── convert.py       #   格式互转
+│   │   └── mux.py           #   封装（添加流、设置 metadata）
+│   ├── subtitle/            #   字幕处理（Stage 6 实现）
 │   ├── pipeline/            #   完整工作流
-│   │   ├── add_subtitle.py  #   流程：ASR → 字幕 → 封装
-│   │   ├── add_dub.py       #   流程：ASR → 翻译 → TTS → 对齐 → 封装
-│   │   └── switch_track.py  #   流程：切换默认轨道
+│   │   └── full_pipeline.py #   ASR → 翻译 → 封装端到端流程
 │   └── __init__.py
 │
 ├── web/                     # Web 表示层
@@ -69,16 +59,20 @@ video-localizer/
 │   └── __init__.py
 │
 ├── config/                  # 配置（跨层引用）
+│   ├── __init__.py          # Settings 数据类 + YAML 加载
+│   ├── requirements.py      # 硬件检测与配置档选择
 │   └── settings.yaml        # 全局配置
 │
-├── models/                  # ML 模型存储
-├── media/                   # 媒体文件 I/O
+├── media/                   # 媒体文件 I/O（input / output / temp）
 ├── docs/                    # 项目文档
 ├── tests/                   # 测试
 │
 ├── app.py                   # FastAPI 入口
-└── __init__.py              # 版本号
+└── worker.py                # GPU Worker（Stage 9 计划拆分）
 ```
+
+> **说明**：目录树反映当前已实现文件。`worker.py` 与 `engines/tts/`、`processing/subtitle/`
+> 等目录中的模块将在后续 Stage（TTS、硬字幕烧录、音频对齐等）中补齐。
 
 ---
 
@@ -146,12 +140,13 @@ asr:
 
 # subtitle: 字幕默认值
 subtitle:
-  default_language: eng
+  default_language: zho
   default_format: srt
 
-# translate: 翻译引擎
+# translate: 翻译引擎（默认 none；使用 /translate 前需启用）
 translate:
-  engine: none                    # llm / llm_local / deepl / none
+  engine: none                    # llm / llm_local / none
+  target_language: zho
 
 # tts: 语音合成
 tts:
@@ -182,7 +177,7 @@ profiles:
 | ASR 引擎 | faster-whisper | 速度 4x、显存省半、离线免费 |
 | 翻译引擎 | LLM API（DeepSeek） | 翻译质量最高，可理解上下文 |
 | TTS 引擎 | Edge-TTS | 免费、高质量、零配置 |
-| FFmpeg 调用 | ffmpeg-python | 比命令行更可控，Python 原生 |
+| FFmpeg 调用 | subprocess | 比 ffmpeg-python 更可控，减少依赖 |
 | Python 版本 | 3.14 | 已安装，ctranslate2 支持 cp314 |
 
 ---

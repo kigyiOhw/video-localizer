@@ -93,10 +93,20 @@ docker compose up -d
 # Install dependencies
 pip install -r requirements.txt
 
+# Configure (required for translation)
+# 默认 translate.engine 为 none，需手动启用：
+#   cp config/settings.yaml config/settings.local.yaml
+#   # 编辑 settings.local.yaml，设置 translate.engine 为 llm 或 llm_local
+cp config/settings.yaml config/settings.local.yaml
+
 # Start
 python app.py
 # → http://localhost:8000
 ```
+
+> **注意**：翻译功能默认禁用。首次使用 `/translate` 或 `/pipeline` 前，
+> 请在 `config/settings.local.yaml` 中将 `translate.engine` 设为 `llm`（OpenAI 兼容 API）
+> 或 `llm_local`（本地 Ollama），并配置对应 API 密钥/地址。
 
 For GPU-accelerated ASR, run the worker on the host machine:
 
