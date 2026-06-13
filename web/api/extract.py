@@ -12,6 +12,8 @@ from pathlib import Path
 from fastapi import APIRouter, Form, Query, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 
+from web.api.utils import _is_within_directory
+
 logger = logging.getLogger("video_localizer.api.extract")
 
 router = APIRouter(prefix="/api/extract")
@@ -52,16 +54,6 @@ def _parse_stream_spec(raw: str) -> dict[str, str | int | None]:
     if len(parts) >= 3:
         result["ext"] = parts[2]
     return result
-
-
-def _is_within_directory(target: Path, directory: Path) -> bool:
-    """检查 target 是否在 directory 子树内（防止路径穿越）。"""
-    try:
-        target_resolved = target.resolve()
-        dir_resolved = directory.resolve()
-        return str(target_resolved).startswith(str(dir_resolved) + str(Path("/")))
-    except (ValueError, OSError):
-        return False
 
 
 @router.post("/", response_model=None)

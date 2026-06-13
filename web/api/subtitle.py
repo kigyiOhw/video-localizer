@@ -13,6 +13,8 @@ from pathlib import Path
 from fastapi import APIRouter, Form, Query, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 
+from web.api.utils import _is_within_directory
+
 logger = logging.getLogger("video_localizer.api.subtitle")
 
 router = APIRouter(prefix="/api/subtitle")
@@ -44,16 +46,6 @@ def _resolve_path(file_path: str) -> Path:
     if p.is_absolute():
         return p
     return _get_settings().paths.media_input / p
-
-
-def _is_within_directory(target: Path, directory: Path) -> bool:
-    """检查 target 是否在 directory 子树内（防止路径穿越）。"""
-    try:
-        target_resolved = target.resolve()
-        dir_resolved = directory.resolve()
-        return str(target_resolved).startswith(str(dir_resolved) + str(Path("/")))
-    except (ValueError, OSError):
-        return False
 
 
 def _allowed_media_dir() -> Path:
