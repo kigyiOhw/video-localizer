@@ -1,6 +1,6 @@
 # Video-Localizer 总体实现计划
 
-> 最后更新: 2026-06-11
+> 最后更新: 2026-06-13
 
 ## 1. 项目现状
 
@@ -11,10 +11,11 @@
 | 依赖包 | 已安装（含 faster-whisper, ctranslate2, silero-vad, nvidia-cublas-cu12, httpx） |
 | ASR 模型 | faster-whisper large-v3 (~3GB) 已下载，GPU (CUDA) 推理正常 |
 | 已完成 Stage | 1 / 2 / 3 / 4 / 9 / 10 / 11 |
-| 当前待做 | **P2: 字幕格式转换** (SRT↔ASS↔WebVTT) |
+| 当前待做 | **Stage 5: 切换默认轨道**；并行收尾审计遗留 P1/P2 修复 |
+| 审核修复 | P0/P1 已完成并提交；剩余 P2/P3 见下方任务队列 |
 | 设计文档 | 6 份 (`docs/00-05`) |
 | 实施记录 | 1 份 (`docs/notes/01-asr-issues.md`) |
-| Git | 有提交历史，当前有未提交变更 (Stage 10) |
+| Git | 干净（P0/P1 修复已提交） |
 
 ## 2. 部署架构
 
@@ -92,6 +93,47 @@ Stage 3 ──→ Stage 9 → Stage 10 → Stage 11
                                         ↓
                 Stage 12 → Stage 13 → Stage 14
 ```
+
+---
+
+## 5.5 未完成任务队列（按优先级）
+
+### P1 — 高优先级（进入 Stage 5 前先完成）
+
+| # | 任务 | 说明 | 关键文件 |
+|---|---|---|---|
+| 1 | 修复 LLM 翻译响应解析器 | Markdown 代码块处理脆弱 | `engines/translate/llm.py` |
+| 2 | 修复流水线 SSE 绕过 ASREngine | 流式版本直接调 `model.transcribe` | `processing/pipeline/full_pipeline.py`, `web/api/pipeline.py` |
+| 3 | 统一 Python 3.14 声明 | README 仍写 ≥ 3.13 | `README.md` |
+| 4 | 更新进度与架构文档 | 本文档与 architecture.md 多处与实际不符 | `docs/plan/00-master-plan.md`, `docs/04-architecture.md` |
+
+### P2 — 中优先级（安全与质量）
+
+| # | 任务 | 说明 | 关键文件 |
+|---|---|---|---|
+| 5 | 上传文件名安全清洗 | 直接用 `file.filename` 写入临时目录 | `web/api/probe.py` |
+| 6 | 限制绝对路径探测范围 | 绝对路径可探测任意系统文件 | `web/api/probe.py`, `web/api/extract.py` |
+| 7 | 错误模板注入 request 上下文 | 使用 `Template.render()` 而非 `TemplateResponse` | `web/api/subtitle.py` |
+
+### P3 — 低优先级（重构与清理）
+
+| # | 任务 | 说明 | 关键文件 |
+|---|---|---|---|
+| 8 | 消除 requirements.py 前向引用 | `"Settings"` + `# noqa: F821` | `config/requirements.py` |
+| 9 | 避免重复 probe 取单条流时长 | `_get_stream_duration` 又完整 probe 一次 | `processing/core/extract.py` |
+| 10 | 翻译引擎默认禁用引导 | `engine: none` 首次运行抛错 | `config/settings.yaml`, `README.md` |
+| 11 | 清理死代码 | `_allowed_media_dir()` 未使用 | `web/api/subtitle.py` |
+| 12 | 运行完整 pytest 回归 | 环境就绪后立即执行 | `tests/` |
+
+### Stage 路线
+
+| # | 任务 | 依赖 | 关键文件 |
+|---|---|---|---|
+| 13 | Stage 5: 切换默认轨道 | — | `processing/core/mux.py`, `web/api/` |
+| 14 | Stage 6: 字幕格式转换 | Stage 5 完成后 | `processing/subtitle/convert.py` |
+| 15 | Stage 7: 音频轨管理 + 同步 | Stage 5/6 | `processing/core/sync.py` |
+| 16 | Stage 8: 硬字幕烧录 | Stage 6/7 | `processing/core/burn.py` |
+| 17 | Stage 12–14: TTS / 对齐 / 最终流水线 | Stage 11 稳定 | `engines/tts/`, `processing/pipeline/` |
 
 ---
 
@@ -276,4 +318,4 @@ docs/
 
 ---
 
-*下一步: Stage 1 实施*
+*下一步: 完成 P1 审计遗留修复，然后进入 Stage 5 实施*
