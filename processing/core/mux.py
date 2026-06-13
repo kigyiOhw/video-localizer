@@ -9,6 +9,7 @@ import logging
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 logger = logging.getLogger("video_localizer.mux")
 
@@ -37,6 +38,18 @@ class MuxResult:
     subtitle_count: int      # 输出文件的字幕轨总数
     added_track_index: int   # 新添加的字幕轨索引（字幕流中的序号）
     language: str            # 设置的语言代码，e.g. "eng"
+
+
+@dataclass
+class SwitchDefaultResult:
+    """切换默认轨道结果。"""
+
+    input_video: Path
+    output_path: Path
+    output_size: int
+    stream_type: str
+    stream_index: int
+    changed_tracks: list[dict[str, Any]]
 
 
 # ---------------------------------------------------------------------------
@@ -170,8 +183,223 @@ def add_subtitle(
 
 
 # ---------------------------------------------------------------------------
+# 切换默认轨道
+# ---------------------------------------------------------------------------
+
+
+def switch_default_track(
+    video_path: Path,
+    stream_type: str,
+    stream_index: int,
+    output_path: Path | None = None,
+    ffmpeg_path: str = "ffmpeg",
+    ffprobe_path: str = "ffprobe",
+    container: str = "mkv",
+    timeout: int = 120,
+    overwrite: bool = False,
+) -> SwitchDefaultResult:
+    """切换指定类型轨道的默认标记。
+
+    将目标轨道设为 default，同类型其他轨道设为 none。其他类型轨道保持不变。
+
+    Args:
+        video_path: 输入视频文件。
+        stream_type: 流类型 ("video" | "audio" | "subtitle"）。
+        stream_index: 同类流中的序号（0-based）。
+        output_path: 输出文件路径。None 则自动生成为
+                     {stem}_default_<type>_<index>.{container}。
+        ffmpeg_path: ffmpeg 可执行文件路径或名称。
+        ffprobe_path: ffprobe 可执行文件路径或名称（用于校验流存在）。
+        container: 输出容器格式 ("mkv" | "mp4"）。
+        timeout: 子进程超时秒数。
+        overwrite: 是否覆盖已存在的输出文件。
+
+    Returns:
+        SwitchDefaultResult 含输出路径、大小和变更的轨道信息。
+
+    Raises:
+        MuxError: 输入/输出/ffmpeg 问题或流索引无效。
+    """
+    # 验证输入
+    if not video_path.exists():
+        raise MuxError(f"视频文件不存在: {video_path}")
+    if not video_path.is_file():
+        raise MuxError(f"视频路径不是文件: {video_path}")
+
+    stream_type = stream_type.strip().lower()
+    if stream_type not in ("video", "audio", "subtitle"):
+        raise MuxError(f"不支持的流类型: {stream_type}（应为 video / audio / subtitle）")
+
+    container = container.lower()
+    if container not in ("mkv", "mp4"):
+        raise MuxError(f"不支持的容器格式: {container}（应为 mkv / mp4）")
+
+    # 探测流信息并校验索引
+    streams = _get_streams_of_type(video_path, stream_type, ffprobe_path)
+    if stream_index < 0 or stream_index >= len(streams):
+        type_names = {"video": "视频", "audio": "音频", "subtitle": "字幕"}
+        raise MuxError(
+            f"{type_names.get(stream_type, stream_type)}流 #{stream_index} 不存在 "
+            f"（共 {len(streams)} 个）"
+        )
+
+    # 自动生成输出路径
+    if output_path is None:
+        output_parent = video_path.parent / "output"
+        output_parent.mkdir(parents=True, exist_ok=True)
+        output_path = output_parent / f"{video_path.stem}_default_{stream_type}_{stream_index}.{container}"
+    else:
+        output_path = Path(output_path)
+
+    # 检查输出冲突
+    if output_path.exists() and not overwrite:
+        raise MuxError(
+            f"输出文件已存在: {output_path}。请使用 overwrite=True 覆盖或更改输出路径。"
+        )
+
+    # 确保输出目录存在
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # 构建并执行 ffmpeg 命令
+    cmd = _build_switch_default_args(
+        video_path=video_path,
+        output_path=output_path,
+        stream_type=stream_type,
+        stream_index=stream_index,
+        stream_count=len(streams),
+        ffmpeg_path=ffmpeg_path,
+        overwrite=overwrite,
+    )
+
+    logger.info("执行 ffmpeg 切换默认轨道: %s", " ".join(cmd))
+    logger.debug(
+        "切换默认轨道: %s, 类型=%s, 索引=%d, 输出=%s",
+        video_path.name, stream_type, stream_index, output_path,
+    )
+
+    try:
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
+    except FileNotFoundError:
+        raise MuxError(f"ffmpeg 未找到: {ffmpeg_path}。请确认 FFmpeg 已安装并在 PATH 中。")
+    except subprocess.TimeoutExpired:
+        raise MuxError(f"切换默认轨道超时 ({timeout}s): {video_path.name}。文件可能过大。")
+
+    if result.returncode != 0:
+        stderr = result.stderr.strip() if result.stderr else "无错误输出"
+        raise MuxError(f"ffmpeg 返回非零 ({result.returncode}): {stderr}")
+
+    # 验证输出
+    if not output_path.exists() or output_path.stat().st_size == 0:
+        raise MuxError(f"封装后输出文件为空或不存在: {output_path}")
+
+    output_size = output_path.stat().st_size
+
+    changed_tracks = [
+        {
+            "type": stream_type,
+            "index": i,
+            "disposition": "default" if i == stream_index else "none",
+        }
+        for i in range(len(streams))
+    ]
+
+    logger.info(
+        "切换默认轨道完成: %s → %s（类型=%s, 索引=%d）",
+        video_path.name, output_path.name, stream_type, stream_index,
+    )
+
+    return SwitchDefaultResult(
+        input_video=video_path,
+        output_path=output_path,
+        output_size=output_size,
+        stream_type=stream_type,
+        stream_index=stream_index,
+        changed_tracks=changed_tracks,
+    )
+
+
+# ---------------------------------------------------------------------------
 # 内部辅助
 # ---------------------------------------------------------------------------
+
+
+def _get_streams_of_type(
+    video_path: Path,
+    stream_type: str,
+    ffprobe_path: str,
+) -> list:
+    """探测视频中指定类型的流列表。
+
+    Args:
+        video_path: 输入视频。
+        stream_type: "video" | "audio" | "subtitle"。
+        ffprobe_path: ffprobe 可执行文件。
+
+    Returns:
+        该类型的流对象列表。
+
+    Raises:
+        MuxError: 探测失败。
+    """
+    from processing.core.probe import ProbeError, probe_file
+
+    try:
+        result = probe_file(video_path, ffprobe_path=ffprobe_path, timeout=30)
+    except ProbeError as e:
+        raise MuxError(f"探测失败: {e}")
+
+    return {
+        "video": result.video_streams,
+        "audio": result.audio_streams,
+        "subtitle": result.subtitle_streams,
+    }[stream_type]
+
+
+def _build_switch_default_args(
+    video_path: Path,
+    output_path: Path,
+    stream_type: str,
+    stream_index: int,
+    stream_count: int,
+    ffmpeg_path: str,
+    overwrite: bool,
+) -> list[str]:
+    """构建 ffmpeg 切换默认轨道的命令参数。
+
+    Args:
+        video_path: 输入视频。
+        output_path: 输出视频。
+        stream_type: "video" | "audio" | "subtitle"。
+        stream_index: 目标同类流序号（0-based）。
+        stream_count: 该类型流总数。
+        ffmpeg_path: ffmpeg 可执行文件。
+        overwrite: 是否覆盖输出。
+
+    Returns:
+        ffmpeg 命令参数列表。
+    """
+    type_selectors = {"video": "v", "audio": "a", "subtitle": "s"}
+    selector = type_selectors[stream_type]
+
+    cmd = [ffmpeg_path]
+    cmd.append("-y" if overwrite else "-n")
+    cmd += [
+        "-i", str(video_path),
+        "-map", "0",
+        "-c", "copy",
+    ]
+
+    for i in range(stream_count):
+        disposition = "default" if i == stream_index else "none"
+        cmd += [f"-disposition:{selector}:{i}", disposition]
+
+    cmd.append(str(output_path))
+    return cmd
 
 
 def _build_add_subtitle_args(
