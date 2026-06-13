@@ -139,9 +139,9 @@ API docs: `/docs` (Swagger UI)
 ✅ Stage 3   — Stream extraction
 ✅ Stage 4   — Soft subtitle mux (SRT → MKV/MP4)
 ✅ Stage 5   — Switch default track
-⬜ Stage 6   — Subtitle format conversion (SRT↔ASS↔WebVTT)
 ⬜ Stage 7   — Audio track management + sync
 ⬜ Stage 8   — Hard subtitle burn-in
+⬜ Stage 6   — Subtitle format conversion (SRT↔ASS↔WebVTT, deferred)
 ✅ Stage 9   — ASR engine (faster-whisper, SSE, CUDA)
 ✅ Stage 10  — Translation engine (LLM API + Ollama)
 ✅ Stage 11  — End-to-end pipeline (ASR→Translate→Mux)
@@ -307,10 +307,10 @@ API 文档：`/docs`（Swagger UI）
 ✅ Stage 2   — FFprobe 流探测
 ✅ Stage 3   — 流提取
 ✅ Stage 4   — 软字幕封装 (SRT → MKV/MP4)
-⬜ Stage 5   — 切换默认轨道
-⬜ Stage 6   — 字幕格式转换 (SRT↔ASS↔WebVTT)
+✅ Stage 5   — 切换默认轨道
 ⬜ Stage 7   — 音频轨管理 + 音画同步
 ⬜ Stage 8   — 硬字幕烧录
+⬜ Stage 6   — 字幕格式转换 (SRT↔ASS↔WebVTT，延后)
 ✅ Stage 9   — ASR 引擎 (faster-whisper, SSE 流式, CUDA)
 ✅ Stage 10  — 翻译引擎 (LLM API + Ollama)
 ✅ Stage 11  — 端到端流水线 (ASR→翻译→封装)
