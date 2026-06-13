@@ -176,9 +176,11 @@ def run_full_pipeline(
 
     translate_segments = _asr_to_translate_segments(asr_segments)
 
+    src_lang_for_translation = _source_language_for_translation(source_language, detected_lang)
+
     try:
         translated = translate_engine.translate(
-            translate_segments, target_language, source_language,
+            translate_segments, target_language, src_lang_for_translation,
         )
     except Exception as e:
         raise PipelineError(f"翻译失败: {e}")
@@ -436,10 +438,12 @@ def run_full_pipeline_stream(
 
     translate_segments = _dicts_to_translate_segments(all_asr_segments)
 
+    src_lang_for_translation = _source_language_for_translation(source_language, detected_lang)
+
     try:
         all_translated: list[dict[str, Any]] = []
         for batch_idx, batch in enumerate(
-            translate_engine.translate_stream(translate_segments, target_language, source_language), 1
+            translate_engine.translate_stream(translate_segments, target_language, src_lang_for_translation), 1
         ):
             batch_data = []
             for s in batch:
@@ -580,13 +584,13 @@ def _asr_lang(source_language: str) -> str | None:
 
 
 def _lang_name_to_code(name: str) -> str:
-    """语言名称 → ISO 639-2 代码（用于 FFmpeg metadata）。
+    """语言名称 → ISO 639-2/T 代码（用于 FFmpeg metadata）。
 
     这是一个简化的映射，覆盖常用语言。
     """
     mapping = {
         "chinese": "zho", "english": "eng", "japanese": "jpn",
-        "korean": "kor", "french": "fre", "german": "ger",
+        "korean": "kor", "french": "fra", "german": "deu",
         "spanish": "spa", "portuguese": "por", "russian": "rus",
         "arabic": "ara", "italian": "ita", "thai": "tha",
         "vietnamese": "vie", "hindi": "hin", "indonesian": "ind",
@@ -595,6 +599,44 @@ def _lang_name_to_code(name: str) -> str:
         "danish": "dan", "finnish": "fin", "ukrainian": "ukr",
     }
     return mapping.get(name.strip().lower(), name[:3].lower())
+
+
+_ISO639_1_TO_NAME: dict[str, str] = {
+    "zh": "Chinese",
+    "en": "English",
+    "ja": "Japanese",
+    "ko": "Korean",
+    "fr": "French",
+    "de": "German",
+    "es": "Spanish",
+    "pt": "Portuguese",
+    "ru": "Russian",
+    "ar": "Arabic",
+    "it": "Italian",
+    "th": "Thai",
+    "vi": "Vietnamese",
+    "hi": "Hindi",
+    "id": "Indonesian",
+    "ms": "Malay",
+    "tr": "Turkish",
+    "pl": "Polish",
+    "nl": "Dutch",
+    "sv": "Swedish",
+    "no": "Norwegian",
+    "da": "Danish",
+    "fi": "Finnish",
+    "uk": "Ukrainian",
+}
+
+
+def _source_language_for_translation(source_language: str, detected_lang: str) -> str:
+    """确定传给翻译引擎的源语言。
+
+    用户已指定时直接使用；未指定时将 ASR 检测到的 ISO 639-1 代码转换为语言名称。
+    """
+    if source_language and source_language.strip():
+        return source_language.strip()
+    return _ISO639_1_TO_NAME.get(detected_lang.strip().lower(), detected_lang.strip())
 
 
 def _asr_to_translate_segments(asr_segments: list[ASRSegment]) -> list[TranslateSegment]:

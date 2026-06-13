@@ -18,6 +18,7 @@ from processing.pipeline.full_pipeline import (
     _asr_to_translate_segments,
     _dicts_to_translate_segments,
     _lang_name_to_code,
+    _source_language_for_translation,
     run_full_pipeline,
     run_full_pipeline_stream,
 )
@@ -296,9 +297,23 @@ class TestHelpers:
         assert _lang_name_to_code("Chinese") == "zho"
         assert _lang_name_to_code("English") == "eng"
         assert _lang_name_to_code("Japanese") == "jpn"
+        assert _lang_name_to_code("French") == "fra"
+        assert _lang_name_to_code("German") == "deu"
 
     def test_lang_name_to_code_unknown(self):
         assert _lang_name_to_code("Esperanto") == "esp"
+
+    def test_source_language_for_translation_user_provided(self):
+        """用户已指定源语言时直接使用。"""
+        assert _source_language_for_translation("English", "ja") == "English"
+        assert _source_language_for_translation("eng", "ja") == "eng"
+
+    def test_source_language_for_translation_auto_detected(self):
+        """未指定源语言时，将检测到的 ISO 639-1 转为语言名称。"""
+        assert _source_language_for_translation("", "en") == "English"
+        assert _source_language_for_translation("", "zh") == "Chinese"
+        assert _source_language_for_translation("", "ja") == "Japanese"
+        assert _source_language_for_translation("", "xx") == "xx"
 
 
 # ---------------------------------------------------------------------------
