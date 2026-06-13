@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from typing import Iterator
 
 import httpx
@@ -178,10 +179,14 @@ class LLMTranslateEngine(TranslateEngine):
         try:
             # 去掉可能的 markdown 代码块包裹
             cleaned = content
-            if cleaned.startswith("```"):
-                lines = cleaned.split("\n")
-                # 去掉第一行（```json）和最后一行（```）
-                cleaned = "\n".join(lines[1:-1])
+            code_block_match = re.search(
+                r"```(?:json)?\s*\n(.*?)\n```", cleaned, re.DOTALL
+            )
+            if code_block_match:
+                cleaned = code_block_match.group(1).strip()
+            elif cleaned.startswith("```"):
+                # 只有开头代码块标记但无闭合：去掉第一行后再试
+                cleaned = cleaned.split("\n", 1)[1] if "\n" in cleaned else ""
             result = json.loads(cleaned)
             if isinstance(result, list) and all(isinstance(item, str) for item in result):
                 # 补齐或截断到期望长度
@@ -200,7 +205,6 @@ class LLMTranslateEngine(TranslateEngine):
             if not stripped:
                 continue
             # 尝试去掉行首编号 [N] 或 N.
-            import re
             match = re.match(r"^(?:\[\d+\]\s*|\d+\.\s*|[-*]\s*)", stripped)
             if match:
                 stripped = stripped[match.end():]

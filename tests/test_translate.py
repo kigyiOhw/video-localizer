@@ -275,6 +275,23 @@ class TestLLMTranslateEngine:
         )
         assert result == ["a", "b"]
 
+    def test_parse_response_open_code_block_no_close(self, engine: LLMTranslateEngine) -> None:
+        """只有开头 ``` 无闭合时不应丢失 JSON 内容。"""
+        result = engine._parse_response('```json\n["a", "b"]', 2)
+        assert result == ["a", "b"]
+
+    def test_parse_response_code_block_with_extra_text(self, engine: LLMTranslateEngine) -> None:
+        """代码块前后有解释文本时仍能提取 JSON。"""
+        result = engine._parse_response(
+            'Sure, here is the translation:\n```json\n["a", "b"]\n```\nHope it helps.', 2
+        )
+        assert result == ["a", "b"]
+
+    def test_parse_response_plain_code_block(self, engine: LLMTranslateEngine) -> None:
+        """无语言标记的 ``` 代码块也能解析。"""
+        result = engine._parse_response('```\n["a", "b"]\n```', 2)
+        assert result == ["a", "b"]
+
     def test_parse_response_pads_short(self, engine: LLMTranslateEngine) -> None:
         """返回条数不足 → 空字符串补齐。"""
         result = engine._parse_response('["a"]', 3)
