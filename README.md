@@ -67,7 +67,7 @@ engines/
 
 ### Prerequisites
 
-- **Python** ≥ 3.13
+- **Python** ≥ 3.14
 - **FFmpeg** ≥ 7.0 (with ffprobe)
 - **CUDA-capable GPU** (optional — for GPU-accelerated ASR)
 
@@ -236,7 +236,7 @@ engines/
 
 ### 环境要求
 
-- **Python** ≥ 3.13
+- **Python** ≥ 3.14
 - **FFmpeg** ≥ 7.0（含 ffprobe）
 - **CUDA GPU**（可选 — GPU 加速 ASR 需要）
 
