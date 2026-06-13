@@ -1,0 +1,73 @@
+{# HTMX fragment — 音频轨操作结果或错误信息 #}
+
+{% if error %}
+<div class="error-message">
+    <span class="error-icon">⚠️</span>
+    <div>
+        <strong>音频操作失败</strong>
+        <p>{{ error }}</p>
+    </div>
+</div>
+{% elif result %}
+<div class="success-card">
+    <h3>✅ 音频操作成功</h3>
+    <div class="success-grid">
+        <div class="success-item">
+            <span class="success-label">操作类型</span>
+            <span class="success-value">{{ result.operation }}</span>
+        </div>
+        <div class="success-item">
+            <span class="success-label">输入视频</span>
+            <span class="success-value">{{ result.input_video.split('/')[-1] if '/' in result.input_video else result.input_video.split('\\')[-1] }}</span>
+        </div>
+        <div class="success-item">
+            <span class="success-label">输出文件</span>
+            <span class="success-value">{{ result.output_path.split('/')[-1] if '/' in result.output_path else result.output_path.split('\\')[-1] }}</span>
+        </div>
+        <div class="success-item">
+            <span class="success-label">输出大小</span>
+            <span class="success-value">{{ "%.1f MB" | format(result.output_size / 1048576) if result.output_size >= 1048576 else (result.output_size / 1024) | int | string + " KB" }}</span>
+        </div>
+        {% if result.audio_index is not none %}
+        <div class="success-item">
+            <span class="success-label">目标音轨序号</span>
+            <span class="success-value">#{{ result.audio_index }}</span>
+        </div>
+        {% endif %}
+        {% if result.offset_seconds is defined %}
+        <div class="success-item">
+            <span class="success-label">同步偏移</span>
+            <span class="success-value">{{ "%.1f" | format(result.offset_seconds) }} 秒（正 = 延后）</span>
+        </div>
+        {% endif %}
+        {% if result.speed_ratio is defined %}
+        <div class="success-item">
+            <span class="success-label">速度比例</span>
+            <span class="success-value">{{ result.speed_ratio }}</span>
+        </div>
+        {% endif %}
+        {% if result.language is defined %}
+        <div class="success-item">
+            <span class="success-label">语言代码</span>
+            <span class="success-value">{{ result.language }}</span>
+        </div>
+        {% endif %}
+        {% if result.remaining is defined %}
+        <div class="success-item">
+            <span class="success-label">剩余音轨数</span>
+            <span class="success-value">{{ result.remaining }}</span>
+        </div>
+        {% endif %}
+    </div>
+
+    <a href="{{ result.download_url }}" class="btn-download" download>
+        ⬇ 下载输出文件
+    </a>
+    <div class="warning-message" style="margin-top: 16px;">
+        <span>💡</span>
+        <span>文件保留在服务器上。请及时下载，后续清理功能将在后续版本中实现。</span>
+    </div>
+</div>
+{% else %}
+<div class="empty-select">🤔 没有返回结果</div>
+{% endif %}

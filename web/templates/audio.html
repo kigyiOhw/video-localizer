@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+{% block title %}音频轨管理 - Video-Localizer{% endblock %}
+
+{% block content %}
+<div class="subtitle-panel">
+    <h2>🔊 音频轨管理</h2>
+    <p class="desc" style="margin-bottom: 24px;">添加、替换、移除、静音音频轨，或调整音画同步与播放速度</p>
+
+    <!-- 添加音频轨 -->
+    <section class="audio-section" style="margin-bottom: 32px;">
+        <h3>➕ 添加音频轨</h3>
+        <form hx-post="/api/audio/add" hx-target="#audio-results" hx-indicator="#audio-spinner">
+            <div class="input-group">
+                <label>📹 视频文件路径</label>
+                <input type="text" name="file_path" class="path-input" placeholder="如 /media/input/movie.mkv" required>
+            </div>
+            <div class="input-group">
+                <label>🎵 外部音频文件路径</label>
+                <input type="text" name="audio_path" class="path-input" placeholder="如 /media/input/audio.m4a" required>
+            </div>
+            <div class="options-row">
+                <div class="option-group">
+                    <label>🌐 语言代码</label>
+                    <input type="text" name="language" value="und" placeholder="ISO 639-2，如 chi / eng / jpn">
+                </div>
+                <div class="option-group">
+                    <label>⭐ 设为默认</label>
+                    <label class="container-radio">
+                        <input type="checkbox" name="set_default" value="true"> 默认音轨
+                    </label>
+                </div>
+                <div class="option-group">
+                    <label>📦 容器格式</label>
+                    <div class="container-radio-group">
+                        <label class="container-radio">
+                            <input type="radio" name="container" value="mkv" checked> MKV（推荐）
+                        </label>
+                        <label class="container-radio">
+                            <input type="radio" name="container" value="mp4"> MP4
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="subtitle-actions">
+                <button type="submit" class="btn btn-primary">➕ 添加音频轨</button>
+                <span id="audio-spinner" class="htmx-indicator" style="display: inline-flex; align-items: center; gap: 6px; color: var(--text-dim); font-size: 0.85rem;">
+                    <span class="spinner"></span> 处理中...
+                </span>
+            </div>
+        </form>
+    </section>
+
+    <!-- 替换音频轨 -->
+    <section class="audio-section" style="margin-bottom: 32px;">
+        <h3>🔄 替换音频轨</h3>
+        <form hx-post="/api/audio/replace" hx-target="#audio-results" hx-indicator="#audio-spinner">
+            <div class="input-group">
+                <label>📹 视频文件路径</label>
+                <input type="text" name="file_path" class="path-input" placeholder="如 /media/input/movie.mkv" required>
+            </div>
+            <div class="input-group">
+                <label>🎵 新音频文件路径</label>
+                <input type="text" name="audio_path" class="path-input" placeholder="如 /media/input/new_audio.m4a" required>
+            </div>
+            <div class="options-row">
+                <div class="option-group">
+                    <label>#️⃣ 要替换的音轨序号</label>
+                    <input type="number" name="audio_index" min="0" value="0" required>
+                </div>
+                <div class="option-group">
+                    <label>🌐 语言代码</label>
+                    <input type="text" name="language" value="und" placeholder="如 chi / eng / jpn">
+                </div>
+                <div class="option-group">
+                    <label>📦 容器格式</label>
+                    <div class="container-radio-group">
+                        <label class="container-radio">
+                            <input type="radio" name="container" value="mkv" checked> MKV
+                        </label>
+                        <label class="container-radio">
+                            <input type="radio" name="container" value="mp4"> MP4
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="subtitle-actions">
+                <button type="submit" class="btn btn-primary">🔄 替换音频轨</button>
+            </div>
+        </form>
+    </section>
+
+    <!-- 移除音频轨 -->
+    <section class="audio-section" style="margin-bottom: 32px;">
+        <h3>➖ 移除音频轨</h3>
+        <form hx-post="/api/audio/remove" hx-target="#audio-results" hx-indicator="#audio-spinner">
+            <div class="input-group">
+                <label>📹 视频文件路径</label>
+                <input type="text" name="file_path" class="path-input" placeholder="如 /media/input/movie.mkv" required>
+            </div>
+            <div class="options-row">
+                <div class="option-group">
+                    <label>#️⃣ 要移除的音轨序号</label>
+                    <input type="number" name="audio_index" min="0" value="0" required>
+                </div>
+                <div class="option-group">
+                    <label>📦 容器格式</label>
+                    <div class="container-radio-group">
+                        <label class="container-radio">
+                            <input type="radio" name="container" value="mkv" checked> MKV
+                        </label>
+                        <label class="container-radio">
+                            <input type="radio" name="container" value="mp4"> MP4
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="subtitle-actions">
+                <button type="submit" class="btn btn-primary">➖ 移除音频轨</button>
+            </div>
+        </form>
+    </section>
+
+    <!-- 静音音频轨 -->
+    <section class="audio-section" style="margin-bottom: 32px;">
+        <h3>🔇 静音音频轨</h3>
+        <form hx-post="/api/audio/mute" hx-target="#audio-results" hx-indicator="#audio-spinner">
+            <div class="input-group">
+                <label>📹 视频文件路径</label>
+                <input type="text" name="file_path" class="path-input" placeholder="如 /media/input/movie.mkv" required>
+            </div>
+            <div class="options-row">
+                <div class="option-group">
+                    <label>#️⃣ 音轨序号（留空 = 全部静音）</label>
+                    <input type="number" name="audio_index" min="0" placeholder="全部">
+                </div>
+                <div class="option-group">
+                    <label>📦 容器格式</label>
+                    <div class="container-radio-group">
+                        <label class="container-radio">
+                            <input type="radio" name="container" value="mkv" checked> MKV
+                        </label>
+                        <label class="container-radio">
+                            <input type="radio" name="container" value="mp4"> MP4
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="subtitle-actions">
+                <button type="submit" class="btn btn-primary">🔇 静音</button>
+            </div>
+        </form>
+    </section>
+
+    <!-- 同步偏移 -->
+    <section class="audio-section" style="margin-bottom: 32px;">
+        <h3>⏱️ 同步偏移</h3>
+        <form hx-post="/api/audio/sync" hx-target="#audio-results" hx-indicator="#audio-spinner">
+            <div class="input-group">
+                <label>📹 视频文件路径</label>
+                <input type="text" name="file_path" class="path-input" placeholder="如 /media/input/movie.mkv" required>
+            </div>
+            <div class="options-row">
+                <div class="option-group">
+                    <label>⏱️ 偏移秒数（正 = 延后，负 = 提前）</label>
+                    <input type="number" name="offset_seconds" step="0.1" value="0.0" required>
+                </div>
+                <div class="option-group">
+                    <label>#️⃣ 音轨序号（留空 = 全部）</label>
+                    <input type="number" name="audio_index" min="0" placeholder="全部">
+                </div>
+                <div class="option-group">
+                    <label>📦 容器格式</label>
+                    <div class="container-radio-group">
+                        <label class="container-radio">
+                            <input type="radio" name="container" value="mkv" checked> MKV
+                        </label>
+                        <label class="container-radio">
+                            <input type="radio" name="container" value="mp4"> MP4
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="subtitle-actions">
+                <button type="submit" class="btn btn-primary">⏱️ 应用同步偏移</button>
+            </div>
+        </form>
+    </section>
+
+    <!-- 速度调整 -->
+    <section class="audio-section" style="margin-bottom: 32px;">
+        <h3>🐇 速度调整（变速不变调）</h3>
+        <form hx-post="/api/audio/speed" hx-target="#audio-results" hx-indicator="#audio-spinner">
+            <div class="input-group">
+                <label>📹 视频文件路径</label>
+                <input type="text" name="file_path" class="path-input" placeholder="如 /media/input/movie.mkv" required>
+            </div>
+            <div class="options-row">
+                <div class="option-group">
+                    <label>🐇 速度比例（1.0 = 原速，1.05 = 加速 5%）</label>
+                    <input type="number" name="speed_ratio" step="0.01" value="1.0" required>
+                </div>
+                <div class="option-group">
+                    <label>#️⃣ 音轨序号（留空 = 全部）</label>
+                    <input type="number" name="audio_index" min="0" placeholder="全部">
+                </div>
+                <div class="option-group">
+                    <label>📦 容器格式</label>
+                    <div class="container-radio-group">
+                        <label class="container-radio">
+                            <input type="radio" name="container" value="mkv" checked> MKV
+                        </label>
+                        <label class="container-radio">
+                            <input type="radio" name="container" value="mp4"> MP4
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="subtitle-actions">
+                <button type="submit" class="btn btn-primary">🐇 调整速度</button>
+            </div>
+        </form>
+    </section>
+</div>
+
+<div id="audio-results"></div>
+{% endblock %}

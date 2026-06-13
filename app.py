@@ -189,6 +189,15 @@ async def track_page(request: Request):
     })
 
 
+@app.get("/audio")
+async def audio_page(request: Request):
+    """音频轨管理页面。"""
+    logger.debug("GET /audio")
+    return templates.TemplateResponse(request, "audio.html", {
+        "version": __version__,
+    })
+
+
 @app.get("/api/health")
 async def health():
     """健康检查 + 当前配置信息（JSON）。"""
