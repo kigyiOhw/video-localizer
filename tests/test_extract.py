@@ -245,11 +245,11 @@ class TestExtractStream:
 
     @pytest.fixture
     def mock_probe(self):
-        """Mock probe_file 返回有效探测结果。"""
-        result = parse_ffprobe_output(VALID_FFPROBE_OUTPUT)
-        with mock.patch("processing.core.extract._detect_codec", return_value="aac"), \
-             mock.patch("processing.core.extract._get_stream_duration", return_value=300.0):
-            yield result
+        """Mock _detect_codec 返回 codec 和时长。"""
+        with mock.patch(
+            "processing.core.extract._detect_codec", return_value=("aac", 300.0)
+        ):
+            yield
 
     def test_normal_extract(self, tmp_path: Path, mock_probe) -> None:
         """正常提取返回 ExtractResult。"""
@@ -274,6 +274,7 @@ class TestExtractStream:
             assert result.codec == "aac"
             assert result.output_path == output_path
             assert result.output_size == 5000
+            assert result.duration == 300.0
 
     def test_file_not_found(self) -> None:
         """输入文件不存在 → ExtractError。"""
@@ -449,6 +450,7 @@ class TestFormatSize:
 def test_app_extract() -> FastAPI:
     """创建独立的测试 FastAPI app（不导入 app.py）。"""
     from fastapi.templating import Jinja2Templates
+    from unittest import mock as umock
 
     app = FastAPI()
 
@@ -457,6 +459,26 @@ def test_app_extract() -> FastAPI:
 
     from web.api import router as api_router
     app.include_router(api_router)
+
+    # 统一把 API 模块的 settings 指向宽泛根目录，避免路径校验阻塞测试
+    import web.api.probe as probe_module
+    import web.api.extract as extract_module
+    import web.api.subtitle as subtitle_module
+    import web.api.pipeline as pipeline_module
+
+    def _test_settings():
+        cfg = umock.Mock()
+        cfg.paths.media_input = Path("/tmp")
+        cfg.paths.media_output = Path("/tmp")
+        cfg.paths.temp_dir = Path("/tmp")
+        cfg.ffmpeg.executable = "ffmpeg"
+        cfg.ffmpeg.ffprobe_executable = "ffprobe"
+        return cfg
+
+    probe_module._get_settings = _test_settings
+    extract_module._get_settings = _test_settings
+    subtitle_module._get_settings = _test_settings
+    pipeline_module._get_settings = _test_settings
 
     # GET /extract 页面路由
     @app.get("/extract", response_model=None)

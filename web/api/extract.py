@@ -12,7 +12,7 @@ from pathlib import Path
 from fastapi import APIRouter, Form, Query, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 
-from web.api.utils import _is_within_directory
+from web.api.utils import _is_within_directory, _resolve_allowed_path
 
 logger = logging.getLogger("video_localizer.api.extract")
 
@@ -32,12 +32,15 @@ def _get_settings():
 
 
 def _resolve_path(file_path: str) -> Path:
-    """将输入的路径字符串解析为 Path 对象。"""
-    p = Path(file_path)
-    if p.is_absolute():
-        return p
+    """将输入的路径字符串解析为 Path 对象并校验允许范围。
+
+    允许访问 media_input 与 temp_dir 目录。
+    """
     settings = _get_settings()
-    return settings.paths.media_input / p
+    return _resolve_allowed_path(
+        file_path,
+        [settings.paths.media_input, settings.paths.temp_dir],
+    )
 
 
 def _parse_stream_spec(raw: str) -> dict[str, str | int | None]:
@@ -98,7 +101,11 @@ async def extract_post(
     if not file_path or not file_path.strip():
         return _extract_error(request, "请提供 file_path 参数。", 400)
 
-    path = _resolve_path(file_path.strip())
+    try:
+        path = _resolve_path(file_path.strip())
+    except ValueError as e:
+        logger.warning("提取请求路径非法: %s", e)
+        return _extract_error(request, str(e), 403)
 
     # 批量提取
     if streams and len(streams) > 0:

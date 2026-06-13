@@ -419,6 +419,7 @@ class TestFormatSize:
 def test_app_subtitle() -> FastAPI:
     """创建独立的测试 FastAPI app。"""
     from fastapi.templating import Jinja2Templates
+    from unittest import mock as umock
 
     app = FastAPI()
 
@@ -427,6 +428,26 @@ def test_app_subtitle() -> FastAPI:
 
     from web.api import router as api_router
     app.include_router(api_router)
+
+    # 统一把 API 模块的 settings 指向宽泛根目录，避免路径校验阻塞测试
+    import web.api.probe as probe_module
+    import web.api.extract as extract_module
+    import web.api.subtitle as subtitle_module
+    import web.api.pipeline as pipeline_module
+
+    def _test_settings():
+        cfg = umock.Mock()
+        cfg.paths.media_input = Path("/tmp")
+        cfg.paths.media_output = Path("/tmp")
+        cfg.paths.temp_dir = Path("/tmp")
+        cfg.ffmpeg.executable = "ffmpeg"
+        cfg.ffmpeg.ffprobe_executable = "ffprobe"
+        return cfg
+
+    probe_module._get_settings = _test_settings
+    extract_module._get_settings = _test_settings
+    subtitle_module._get_settings = _test_settings
+    pipeline_module._get_settings = _test_settings
 
     @app.get("/subtitle", response_model=None)
     async def subtitle_page(request: Request):

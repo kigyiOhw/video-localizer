@@ -11,7 +11,7 @@ import shutil
 from pathlib import Path
 
 from fastapi import APIRouter, Form, Query, Request, UploadFile
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response, TemplateResponse
 
 from web.api.utils import _is_within_directory
 
@@ -38,19 +38,16 @@ def _get_settings():
 
 
 def _resolve_path(file_path: str) -> Path:
-    """将输入的路径字符串解析为 Path 对象。
+    """将输入的路径字符串解析为 Path 对象并校验允许范围。
 
-    绝对路径直接使用，相对路径基于 media_input 解析。
+    允许访问 media_input 与 temp_dir 目录。
     """
-    p = Path(file_path)
-    if p.is_absolute():
-        return p
-    return _get_settings().paths.media_input / p
-
-
-def _allowed_media_dir() -> Path:
-    """返回允许访问的媒体根目录（input + output）。"""
-    return _get_settings().paths.media_input.parent
+    settings = _get_settings()
+    from web.api.utils import _resolve_allowed_path
+    return _resolve_allowed_path(
+        file_path,
+        [settings.paths.media_input, settings.paths.temp_dir],
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -147,6 +144,9 @@ async def subtitle_add_post(
     except MuxError as e:
         logger.warning("添加字幕失败: %s", e)
         return _error_response(request, templates, str(e), 422)
+    except ValueError as e:
+        logger.warning("添加字幕路径非法: %s", e)
+        return _error_response(request, templates, str(e), 403)
     except Exception as e:
         logger.warning("添加字幕出错: %s", e, exc_info=True)
         return _error_response(request, templates, f"内部错误: {e}", 500)
@@ -216,8 +216,16 @@ async def subtitle_add_get(
             status_code=400,
         )
 
-    resolved_video = _resolve_path(video_path.strip())
-    resolved_subtitle = _resolve_path(subtitle_path.strip())
+    try:
+        resolved_video = _resolve_path(video_path.strip())
+        resolved_subtitle = _resolve_path(subtitle_path.strip())
+    except ValueError as e:
+        logger.warning("添加字幕路径非法: %s", e)
+        return JSONResponse(
+            content={"success": False, "error": str(e)},
+            status_code=403,
+        )
+
     output_path = settings.paths.media_output / f"{resolved_video.stem}_subtitled.{container}"
 
     try:
@@ -308,15 +316,14 @@ def _error_response(
     templates,
     message: str,
     status_code: int,
-) -> HTMLResponse | JSONResponse:
+) -> Response | JSONResponse:
     """根据请求类型返回错误 HTML 或 JSON。"""
     is_htmx = request.headers.get("hx-request", "").lower() == "true"
     if is_htmx:
-        return HTMLResponse(
-            content=templates.get_template("subtitle_results.html").render({
-                "error": message,
-                "result": None,
-            }),
+        return templates.TemplateResponse(
+            request,
+            "subtitle_results.html",
+            {"error": message, "result": None},
             status_code=status_code,
         )
     return JSONResponse(

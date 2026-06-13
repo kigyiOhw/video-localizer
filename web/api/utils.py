@@ -17,3 +17,33 @@ def _is_within_directory(target: Path, directory: Path) -> bool:
         return target_resolved.is_relative_to(dir_resolved)
     except (ValueError, OSError):
         return False
+
+
+def _resolve_allowed_path(file_path: str, allowed_roots: list[Path]) -> Path:
+    """解析路径并校验其位于允许的根目录之一内。
+
+    相对路径基于第一个允许的根目录解析。绝对路径直接解析后校验。
+
+    Args:
+        file_path: 用户传入的路径字符串。
+        allowed_roots: 允许访问的根目录列表，第一个用于相对路径基准。
+
+    Returns:
+        解析后的 Path。
+
+    Raises:
+        ValueError: 路径不在任何允许根目录内。
+    """
+    if not allowed_roots:
+        raise ValueError("未配置允许访问的根目录")
+
+    p = Path(file_path)
+    if not p.is_absolute():
+        p = allowed_roots[0] / p
+
+    p = p.resolve()
+    for root in allowed_roots:
+        if _is_within_directory(p, root):
+            return p
+
+    raise ValueError(f"禁止访问该路径: {file_path}")

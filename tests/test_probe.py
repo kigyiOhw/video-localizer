@@ -477,6 +477,28 @@ def test_app() -> FastAPI:
     from web.api import router as api_router
     app.include_router(api_router)
 
+    # 统一把 API 模块的 settings 指向宽泛根目录，避免路径校验阻塞测试
+    import web.api.probe as probe_module
+    import web.api.extract as extract_module
+    import web.api.subtitle as subtitle_module
+    import web.api.pipeline as pipeline_module
+
+    def _test_settings():
+        cfg = mock.Mock()
+        cfg.paths.media_input = Path("/tmp")
+        cfg.paths.media_output = Path("/tmp")
+        cfg.paths.temp_dir = Path("/tmp")
+        cfg.ffmpeg.executable = "ffmpeg"
+        cfg.ffmpeg.ffprobe_executable = "ffprobe"
+        cfg.translate.target_language = "Chinese"
+        cfg.translate.source_language = ""
+        return cfg
+
+    probe_module._get_settings = _test_settings
+    extract_module._get_settings = _test_settings
+    subtitle_module._get_settings = _test_settings
+    pipeline_module._get_settings = _test_settings
+
     # GET /probe 页面路由
     @app.get("/probe", response_model=None)
     async def probe_page(request: Request):  # noqa: F811
@@ -515,6 +537,35 @@ class TestAPIProbe:
             data = response.json()
             assert data["success"] is True
             assert len(data["video_streams"]) == 1
+
+    def test_post_with_uploaded_file(self, client: TestClient, tmp_path: Path) -> None:
+        """POST /api/probe 上传文件 → 文件名被清洗后保存到临时目录。"""
+        with mock.patch("processing.core.probe.probe_file") as mock_probe:
+            mock_probe.return_value = parse_ffprobe_output(VALID_FFPROBE_OUTPUT)
+            with mock.patch("web.api.probe._get_settings") as mock_settings:
+                cfg = mock.Mock()
+                cfg.paths.temp_dir = tmp_path
+                cfg.paths.media_input = tmp_path
+                cfg.ffmpeg.ffprobe_executable = "ffprobe"
+                mock_settings.return_value = cfg
+
+                response = client.post(
+                    "/api/probe",
+                    files={"file": ("../../etc/passwd", b"fake content", "video/mp4")},
+                )
+                assert response.status_code == 200
+                # 清洗后只保留文件名，不应写到 tmp_path 之外
+                saved = tmp_path / "passwd"
+                assert saved.exists()
+                assert saved.read_bytes() == b"fake content"
+
+    def test_post_disallowed_absolute_path(self, client: TestClient) -> None:
+        """POST /api/probe 使用不在允许范围内的绝对路径 → 422。"""
+        response = client.post("/api/probe", data={"file_path": "/etc/passwd"})
+        assert response.status_code == 422
+        data = response.json()
+        assert data["success"] is False
+        assert "禁止访问" in data["error"]
 
     def test_post_probe_error_json(self, client: TestClient) -> None:
         """POST /api/probe 探测失败 → 422。"""

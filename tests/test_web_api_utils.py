@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from web.api.utils import _is_within_directory
+from web.api.utils import _is_within_directory, _resolve_allowed_path
 
 
 class TestIsWithinDirectory:
@@ -71,3 +71,53 @@ class TestIsWithinDirectory:
             assert _is_within_directory(Path("secret.txt"), Path("output")) is False
         finally:
             os.chdir(old_cwd)
+
+
+class TestResolveAllowedPath:
+    """_resolve_allowed_path 路径解析与校验测试。"""
+
+    def test_relative_path_resolves_to_first_root(self, tmp_path: Path) -> None:
+        """相对路径基于第一个根目录解析。"""
+        root = tmp_path / "media"
+        root.mkdir()
+        target = root / "video.mkv"
+        target.write_text("fake")
+        result = _resolve_allowed_path("video.mkv", [root])
+        assert result == target.resolve()
+
+    def test_absolute_path_within_root(self, tmp_path: Path) -> None:
+        """位于允许根目录内的绝对路径通过。"""
+        root = tmp_path / "media"
+        sub = root / "sub"
+        sub.mkdir(parents=True)
+        target = sub / "video.mkv"
+        target.write_text("fake")
+        result = _resolve_allowed_path(str(target), [root])
+        assert result == target.resolve()
+
+    def test_absolute_path_outside_root_raises(self, tmp_path: Path) -> None:
+        """位于允许根目录外的绝对路径拒绝。"""
+        root = tmp_path / "media"
+        outside = tmp_path / "secret.txt"
+        outside.write_text("secret")
+        with pytest.raises(ValueError, match="禁止访问"):
+            _resolve_allowed_path(str(outside), [root])
+
+    def test_path_traversal_raises(self, tmp_path: Path) -> None:
+        """路径穿越尝试被拒绝。"""
+        root = tmp_path / "media"
+        root.mkdir()
+        outside = tmp_path / "secret.txt"
+        outside.write_text("secret")
+        with pytest.raises(ValueError, match="禁止访问"):
+            _resolve_allowed_path(str(root / ".." / "secret.txt"), [root])
+
+    def test_second_root_allowed(self, tmp_path: Path) -> None:
+        """路径位于第二个允许根目录内时通过。"""
+        root1 = tmp_path / "media"
+        root2 = tmp_path / "temp"
+        root2.mkdir(parents=True)
+        target = root2 / "upload.mp4"
+        target.write_text("fake")
+        result = _resolve_allowed_path(str(target), [root1, root2])
+        assert result == target.resolve()

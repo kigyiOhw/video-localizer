@@ -12,8 +12,9 @@ from pathlib import Path
 from fastapi import APIRouter, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse
 
-logger = logging.getLogger("video_localizer.api.probe")
+from web.api.utils import _resolve_allowed_path
 
+logger = logging.getLogger("video_localizer.api.probe")
 router = APIRouter(prefix="/api/probe")
 
 
@@ -30,16 +31,15 @@ def _get_settings():
 
 
 def _resolve_path(file_path: str) -> Path:
-    """将输入的路径字符串解析为 Path 对象。
+    """将输入的路径字符串解析为 Path 对象并校验允许范围。
 
-    - 绝对路径直接使用
-    - 相对路径基于 media_input 目录
+    允许访问 media_input 与 temp_dir 目录。
     """
-    p = Path(file_path)
-    if p.is_absolute():
-        return p
     settings = _get_settings()
-    return settings.paths.media_input / p
+    return _resolve_allowed_path(
+        file_path,
+        [settings.paths.media_input, settings.paths.temp_dir],
+    )
 
 
 async def _handle_probe(file_path: str | None, request: Request) -> JSONResponse | HTMLResponse:
@@ -63,7 +63,24 @@ async def _handle_probe(file_path: str | None, request: Request) -> JSONResponse
 
     settings = _get_settings()
     templates = _get_templates(request)
-    path = _resolve_path(file_path)  # type: ignore[arg-type]
+
+    try:
+        path = _resolve_path(file_path)  # type: ignore[arg-type]
+    except ValueError as e:
+        logger.warning("探测请求路径非法: %s", e)
+        is_htmx = request.headers.get("hx-request", "").lower() == "true"
+        if is_htmx:
+            return templates.TemplateResponse(request, "probe_results.html", {
+                "error": str(e),
+                "result": None,
+                "format_duration": _format_duration,
+                "format_size": _format_size,
+                "safe_filename": _safe_filename,
+            })
+        return JSONResponse(
+            content={"success": False, "error": str(e)},
+            status_code=403,
+        )
 
     logger.info("探测请求: %s", path)
 
@@ -160,7 +177,8 @@ async def probe_post(
         settings = _get_settings()
         temp_dir = settings.paths.temp_dir
         temp_dir.mkdir(parents=True, exist_ok=True)
-        dest = temp_dir / file.filename
+        safe_name = Path(file.filename).name
+        dest = temp_dir / safe_name
         logger.info("保存上传文件: %s → %s", file.filename, dest)
         content = await file.read()
         dest.write_bytes(content)
@@ -206,7 +224,14 @@ async def probe_get(
     from processing.core.probe import ProbeError, probe_file
 
     settings = _get_settings()
-    path = _resolve_path(file_path.strip())
+    try:
+        path = _resolve_path(file_path.strip())
+    except ValueError as e:
+        logger.warning("GET 探测请求路径非法: %s", e)
+        return JSONResponse(
+            content={"success": False, "error": str(e)},
+            status_code=403,
+        )
     logger.info("GET 探测请求: %s", path)
 
     try:
