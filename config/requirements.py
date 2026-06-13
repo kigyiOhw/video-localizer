@@ -14,6 +14,8 @@ from typing import Any
 
 import psutil
 
+from config import Settings
+
 logger = logging.getLogger("video_localizer.config")
 
 
@@ -147,7 +149,7 @@ def select_profile(vram_gb: float) -> str:
     return "cpu"
 
 
-def auto_configure(settings: "Settings", info: dict[str, Any] | None = None) -> str:  # noqa: F821
+def auto_configure(settings: Settings, info: dict[str, Any] | None = None) -> str:
     """自动检测硬件并应用对应配置档。
 
     Args:
@@ -170,7 +172,7 @@ def auto_configure(settings: "Settings", info: dict[str, Any] | None = None) -> 
 
 
 def check_minimum_requirements(
-    settings: "Settings",  # noqa: F821
+    settings: Settings,
     info: dict[str, Any] | None = None,
 ) -> list[str]:
     """检查是否满足最低运行要求。

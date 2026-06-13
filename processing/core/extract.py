@@ -82,8 +82,8 @@ def extract_stream(
     if stream_type not in ("video", "audio", "subtitle"):
         raise ExtractError(f"不支持的流类型: {stream_type}（应为 video / audio / subtitle）")
 
-    # 探测流的 codec
-    codec = _detect_codec(input_path, ffprobe_path, stream_index, stream_type)
+    # 探测流的 codec 和时长（只 probe 一次）
+    codec, duration = _detect_codec(input_path, ffprobe_path, stream_index, stream_type)
 
     # 确定输出扩展名
     ext = output_ext or _suggest_extension(codec, stream_type)
@@ -129,9 +129,6 @@ def extract_stream(
         raise ExtractError(f"提取后输出文件为空或不存在: {output_path}")
 
     output_size = output_path.stat().st_size
-
-    # 尝试获取时长
-    duration = _get_stream_duration(input_path, ffprobe_path, stream_index, stream_type)
 
     logger.info(
         "提取完成: %s #%d → %s (%s)",
@@ -258,8 +255,8 @@ def _detect_codec(
     ffprobe_path: str,
     stream_index: int,
     stream_type: str,
-) -> str:
-    """探测单个流的 codec（验证流是否存在）。
+) -> tuple[str, float | None]:
+    """探测单个流的 codec 和时长（复用同一次 probe_file 调用）。
 
     Args:
         input_path: 媒体文件路径。
@@ -268,7 +265,7 @@ def _detect_codec(
         stream_type: 流类型。
 
     Returns:
-        codec 名称字符串。
+        (codec, duration) 元组。
 
     Raises:
         ExtractError: 流不存在或探测失败。
@@ -293,32 +290,8 @@ def _detect_codec(
             f"（共 {len(streams)} 个）"
         )
 
-    return streams[stream_index].codec
-
-
-def _get_stream_duration(
-    input_path: Path,
-    ffprobe_path: str,
-    stream_index: int,
-    stream_type: str,
-) -> float | None:
-    """获取单个流的时长。"""
-    from processing.core.probe import ProbeError, probe_file
-
-    try:
-        result = probe_file(input_path, ffprobe_path=ffprobe_path, timeout=30)
-    except ProbeError:
-        return None
-
-    streams = {
-        "video": result.video_streams,
-        "audio": result.audio_streams,
-        "subtitle": result.subtitle_streams,
-    }.get(stream_type, [])
-
-    if 0 <= stream_index < len(streams):
-        return streams[stream_index].duration
-    return None
+    stream = streams[stream_index]
+    return stream.codec, stream.duration
 
 
 def _suggest_extension(codec: str, stream_type: str) -> str:
