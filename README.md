@@ -128,6 +128,7 @@ python worker.py
 | Pipeline | `/pipeline` | End-to-end ASR→Translate→Mux |
 
 | Track | `/track` | Switch default video/audio/subtitle track |
+| Audio | `/audio` | Audio track management + sync + speed |
 
 API docs: `/docs` (Swagger UI)
 
@@ -139,9 +140,9 @@ API docs: `/docs` (Swagger UI)
 ✅ Stage 3   — Stream extraction
 ✅ Stage 4   — Soft subtitle mux (SRT → MKV/MP4)
 ✅ Stage 5   — Switch default track
-⬜ Stage 7   — Audio track management + sync
-⬜ Stage 8   — Hard subtitle burn-in
 ⬜ Stage 6   — Subtitle format conversion (SRT↔ASS↔WebVTT, deferred)
+✅ Stage 7   — Audio track management + sync
+⬜ Stage 8   — Hard subtitle burn-in
 ✅ Stage 9   — ASR engine (faster-whisper, SSE, CUDA)
 ✅ Stage 10  — Translation engine (LLM API + Ollama)
 ✅ Stage 11  — End-to-end pipeline (ASR→Translate→Mux)
@@ -297,6 +298,8 @@ python worker.py
 | 字幕管理 | `/subtitle` | 软字幕封装 |
 | 翻译 | `/translate` | LLM 翻译（SSE 流式） |
 | 流水线 | `/pipeline` | 端到端 ASR→翻译→封装 |
+| 默认轨道 | `/track` | 切换默认视频/音频/字幕轨道 |
+| 音频管理 | `/audio` | 音频轨管理 + 同步 + 变速 |
 
 API 文档：`/docs`（Swagger UI）
 
@@ -308,9 +311,9 @@ API 文档：`/docs`（Swagger UI）
 ✅ Stage 3   — 流提取
 ✅ Stage 4   — 软字幕封装 (SRT → MKV/MP4)
 ✅ Stage 5   — 切换默认轨道
-⬜ Stage 7   — 音频轨管理 + 音画同步
-⬜ Stage 8   — 硬字幕烧录
 ⬜ Stage 6   — 字幕格式转换 (SRT↔ASS↔WebVTT，延后)
+✅ Stage 7   — 音频轨管理 + 音画同步
+⬜ Stage 8   — 硬字幕烧录
 ✅ Stage 9   — ASR 引擎 (faster-whisper, SSE 流式, CUDA)
 ✅ Stage 10  — 翻译引擎 (LLM API + Ollama)
 ✅ Stage 11  — 端到端流水线 (ASR→翻译→封装)

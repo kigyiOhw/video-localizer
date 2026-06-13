@@ -10,8 +10,8 @@
 | Docker | 已安装，当前直接在 Windows 原生运行 (`python app.py`) |
 | 依赖包 | 已安装（含 faster-whisper, ctranslate2, silero-vad, nvidia-cublas-cu12, httpx） |
 | ASR 模型 | faster-whisper large-v3 (~3GB) 已下载，GPU (CUDA) 推理正常 |
-| 已完成 Stage | 1 / 2 / 3 / 4 / 5 / 9 / 10 / 11 |
-| 当前待做 | **Stage 7: 音频轨管理 + 音画同步** |
+| 已完成 Stage | 1 / 2 / 3 / 4 / 5 / 7 / 9 / 10 / 11 |
+| 当前待做 | **Stage 8: 硬字幕烧录** |
 | 延后 Stage | Stage 6: 字幕格式转换 (SRT↔ASS↔WebVTT，独立功能，可后移) |
 | 审核修复 | P0/P1 已完成并提交；剩余 P2/P3 见下方任务队列 |
 | 设计文档 | 6 份 (`docs/00-05`) |
@@ -70,9 +70,9 @@
 ✅ Stage 3: 流提取
 ✅ Stage 4: 添加软字幕 (SRT → MKV/MP4)
 ✅ Stage 5: 切换默认轨道
-⬜ Stage 7: 音频轨管理 + 音画同步
+⬜ Stage 6: 字幕格式转换 (SRT↔ASS↔WebVTT，延后)
+✅ Stage 7: 音频轨管理 + 音画同步
 ⬜ Stage 8: 硬字幕烧录
-⬜ Stage 6: 字幕格式转换 (SRT↔ASS↔WebVTT)
 ✅ Stage 9: ASR 引擎 (faster-whisper), SSE 流式, GPU CUDA
 ✅ Stage 10: 翻译引擎 (LLM API + Ollama)
 ✅ Stage 11: 端到端流水线 (ASR→翻译→封装)
