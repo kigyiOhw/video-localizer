@@ -11,7 +11,7 @@ import shutil
 from pathlib import Path
 
 from fastapi import APIRouter, Form, Query, Request, UploadFile
-from fastapi.responses import FileResponse, JSONResponse, Response, TemplateResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 
 from web.api.utils import _is_within_directory
 
