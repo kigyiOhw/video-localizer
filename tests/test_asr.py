@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import random
 from pathlib import Path
 from unittest import mock
@@ -11,11 +12,7 @@ from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
 
 from engines.asr.engine import ASRSegment, _seconds_to_srt_time, segments_to_srt
-
-
-# ---------------------------------------------------------------------------
-# 测试数据
-# ---------------------------------------------------------------------------
+from web.api.asr import _get_engine
 
 
 def make_segments(n: int = 5) -> list[ASRSegment]:
@@ -157,6 +154,134 @@ class TestWhisperLocalEngine:
         assert len(segments) == 2
         assert segments[0].text == "hello"
         assert segments[1].text == "world"
+
+
+from web.api.asr import _get_engine
+
+
+# ---------------------------------------------------------------------------
+# TestGetEngine
+# ---------------------------------------------------------------------------
+
+
+class TestGetEngine:
+    """ASR 引擎分发测试。"""
+
+    def teardown_method(self):
+        """每次测试后重置单例，避免影响其他测试。"""
+        import web.api.asr as asr_module
+        asr_module._engine = None
+
+    def test_whisper_local_engine(self) -> None:
+        """engine=whisper_local 时实例化本地引擎。"""
+        settings_mock = mock.Mock()
+        settings_mock.asr.engine = "whisper_local"
+        settings_mock.asr.model_size = "tiny"
+        settings_mock.asr.device = "cpu"
+        settings_mock.asr.compute_type = "int8"
+        settings_mock.asr.beam_size = 5
+        settings_mock.asr.vad_filter = True
+
+        with mock.patch("web.api.asr._get_settings", return_value=settings_mock):
+            engine = _get_engine()
+            from engines.asr.whisper_local import WhisperLocalEngine
+            assert isinstance(engine, WhisperLocalEngine)
+
+    def test_whisper_api_not_implemented(self) -> None:
+        """engine=whisper_api 时报错。"""
+        settings_mock = mock.Mock()
+        settings_mock.asr.engine = "whisper_api"
+
+        with mock.patch("web.api.asr._get_settings", return_value=settings_mock):
+            with pytest.raises(ValueError, match="尚未实现"):
+                _get_engine()
+
+    def test_none_engine_disabled(self) -> None:
+        """engine=none 时报错。"""
+        settings_mock = mock.Mock()
+        settings_mock.asr.engine = "none"
+
+        with mock.patch("web.api.asr._get_settings", return_value=settings_mock):
+            with pytest.raises(ValueError, match="已禁用"):
+                _get_engine()
+
+    def test_unknown_engine(self) -> None:
+        """未知 engine 时报错。"""
+        settings_mock = mock.Mock()
+        settings_mock.asr.engine = "magic_asr"
+
+        with mock.patch("web.api.asr._get_settings", return_value=settings_mock):
+            with pytest.raises(ValueError, match="未知"):
+                _get_engine()
+
+
+# ---------------------------------------------------------------------------
+# TestRunASRDetectedLanguage
+# ---------------------------------------------------------------------------
+
+
+class TestRunASRDetectedLanguage:
+    """_run_asr 检测语言相关测试。"""
+
+    def teardown_method(self):
+        """每次测试后重置单例。"""
+        import web.api.asr as asr_module
+        asr_module._engine = None
+
+    def test_auto_language_uses_detected(self) -> None:
+        """language=auto 时使用引擎检测到的语言。"""
+        fake_engine = mock.Mock()
+        fake_engine.transcribe.return_value = [
+            ASRSegment(0.0, 1.0, "hello", 0.9),
+        ]
+        fake_engine.detect_language.return_value = "en"
+
+        import web.api.asr as asr_module
+        asr_module._engine = fake_engine
+
+        settings_mock = mock.Mock()
+        settings_mock.ffmpeg.ffprobe_executable = "ffprobe"
+        settings_mock.paths.temp_dir = Path("/tmp")
+
+        probe_mock = mock.Mock()
+        probe_mock.audio_streams = [mock.Mock(duration=10.0)]
+
+        with mock.patch("web.api.asr._get_settings", return_value=settings_mock):
+            with mock.patch("processing.core.probe.probe_file", return_value=probe_mock):
+                with mock.patch("web.api.asr._extract_audio", return_value=Path("/tmp/audio.wav")):
+                    from web.api.asr import _run_asr
+                    request = mock.Mock()
+                    result = asyncio.run(_run_asr(request, Path("/tmp/test.mp4"), None))
+
+        assert result["language"] == "en"
+        fake_engine.detect_language.assert_called_once_with(Path("/tmp/audio.wav"))
+
+    def test_specified_language_skip_detection(self) -> None:
+        """指定语言时不调用 detect_language。"""
+        fake_engine = mock.Mock()
+        fake_engine.transcribe.return_value = [
+            ASRSegment(0.0, 1.0, "hello", 0.9),
+        ]
+
+        import web.api.asr as asr_module
+        asr_module._engine = fake_engine
+
+        settings_mock = mock.Mock()
+        settings_mock.ffmpeg.ffprobe_executable = "ffprobe"
+        settings_mock.paths.temp_dir = Path("/tmp")
+
+        probe_mock = mock.Mock()
+        probe_mock.audio_streams = [mock.Mock(duration=10.0)]
+
+        with mock.patch("web.api.asr._get_settings", return_value=settings_mock):
+            with mock.patch("processing.core.probe.probe_file", return_value=probe_mock):
+                with mock.patch("web.api.asr._extract_audio", return_value=Path("/tmp/audio.wav")):
+                    from web.api.asr import _run_asr
+                    request = mock.Mock()
+                    result = asyncio.run(_run_asr(request, Path("/tmp/test.mp4"), "ja"))
+
+        assert result["language"] == "ja"
+        fake_engine.detect_language.assert_not_called()
 
 
 # ---------------------------------------------------------------------------

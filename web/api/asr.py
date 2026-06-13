@@ -27,11 +27,12 @@ _engine = None
 
 
 def _get_engine():
-    """延迟创建 ASR 引擎单例（首次请求时加载模型）。"""
+    """延迟创建 ASR 引擎单例（首次请求时加载模型）。
+
+    根据 settings.asr.engine 选择具体实现，未知或禁用的引擎抛出 ValueError。
+    """
     global _engine
     if _engine is None:
-        from engines.asr.whisper_local import WhisperLocalEngine
-
         # 延迟导入避免循环引用
         from app import settings
         cfg = settings.asr
@@ -39,13 +40,22 @@ def _get_engine():
             "初始化 ASR 引擎: engine=%s, model=%s, device=%s, compute=%s",
             cfg.engine, cfg.model_size, cfg.device, cfg.compute_type,
         )
-        _engine = WhisperLocalEngine(
-            model_size=cfg.model_size,
-            device=cfg.device,
-            compute_type=cfg.compute_type,
-            beam_size=cfg.beam_size,
-            vad_filter=cfg.vad_filter,
-        )
+
+        if cfg.engine == "whisper_local":
+            from engines.asr.whisper_local import WhisperLocalEngine
+            _engine = WhisperLocalEngine(
+                model_size=cfg.model_size,
+                device=cfg.device,
+                compute_type=cfg.compute_type,
+                beam_size=cfg.beam_size,
+                vad_filter=cfg.vad_filter,
+            )
+        elif cfg.engine == "whisper_api":
+            raise ValueError("ASR 引擎 'whisper_api' 尚未实现")
+        elif cfg.engine == "none":
+            raise ValueError("ASR 引擎已禁用 (engine=none)")
+        else:
+            raise ValueError(f"未知的 ASR 引擎: {cfg.engine}")
     return _engine
 
 
@@ -449,12 +459,10 @@ async def _run_asr(
     lang_param = language if language and language != "auto" else None
 
     segments = engine.transcribe(audio_path, language=lang_param)
-    detected_lang = lang_param or "unknown"
-
-    # 获取实际检测到的语言
-    if not lang_param and segments:
-        # 从 faster-whisper 获取检测结果（在 transcribe 中已记录）
-        pass
+    if lang_param:
+        detected_lang = lang_param
+    else:
+        detected_lang = engine.detect_language(audio_path) or "unknown"
 
     # 3) 生成 SRT
     srt_text = segments_to_srt(segments)
