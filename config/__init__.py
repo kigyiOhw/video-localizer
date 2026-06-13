@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import logging
+import os
 from copy import deepcopy
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
 import yaml
+from dotenv import load_dotenv
 
 logger = logging.getLogger("video_localizer.config")
 
@@ -50,6 +52,7 @@ class ASRConfig:
     beam_size: int = 5
     vad_filter: bool = True
     language: str = "auto"
+    gpu_worker_url: str = ""  # GPU Worker 地址（whisper_api / 未来分布式推理使用）
 
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> "ASRConfig":
@@ -61,6 +64,7 @@ class ASRConfig:
             beam_size=int(d.get("beam_size", 5)),
             vad_filter=bool(d.get("vad_filter", True)),
             language=d.get("language", "auto"),
+            gpu_worker_url=d.get("gpu_worker_url", ""),
         )
 
 
@@ -143,7 +147,7 @@ class RequirementsConfig:
 
     min_ram_gb: float = 4.0
     min_disk_free_gb: float = 10.0
-    min_python: str = "3.13"
+    min_python: str = "3.14"
     required_tools: list[str] = field(default_factory=lambda: ["ffmpeg", "ffprobe"])
 
     @classmethod
@@ -151,7 +155,7 @@ class RequirementsConfig:
         return cls(
             min_ram_gb=float(d.get("min_ram_gb", 4.0)),
             min_disk_free_gb=float(d.get("min_disk_free_gb", 10.0)),
-            min_python=d.get("min_python", "3.13"),
+            min_python=d.get("min_python", "3.14"),
             required_tools=d.get("required_tools", ["ffmpeg", "ffprobe"]),
         )
 
@@ -201,6 +205,9 @@ class Settings:
     def load(cls, config_path: str | Path = "config/settings.yaml") -> "Settings":
         """从 YAML 加载配置，可选叠加 settings.local.yaml 深度合并。
 
+        同时加载 `.env` 文件，并允许环境变量覆盖部分配置（如 MEDIA_INPUT、
+        MEDIA_OUTPUT、TEMP_DIR、HF_HOME、GPU_WORKER_URL）。
+
         Args:
             config_path: 主配置文件路径。
 
@@ -211,6 +218,9 @@ class Settings:
             FileNotFoundError: 主配置文件缺失。
             yaml.YAMLError: YAML 解析错误。
         """
+        # 1) 加载 .env（不覆盖已存在的环境变量）
+        load_dotenv()
+
         main_path = Path(config_path)
         if not main_path.exists():
             raise FileNotFoundError(f"主配置文件缺失: {main_path}")
@@ -226,6 +236,9 @@ class Settings:
             with open(local_path, "r", encoding="utf-8") as f:
                 local_data = yaml.safe_load(f) or {}
             merged = _deep_merge(merged, local_data)
+
+        # 环境变量最终覆盖
+        merged = _apply_env_overrides(merged)
 
         return cls._from_merged_dict(merged)
 
@@ -328,6 +341,37 @@ class Settings:
 # ---------------------------------------------------------------------------
 # 工具函数
 # ---------------------------------------------------------------------------
+
+
+def _apply_env_overrides(merged: dict[str, Any]) -> dict[str, Any]:
+    """用环境变量覆盖 YAML 配置。
+
+    覆盖的键：
+      - MEDIA_INPUT, MEDIA_OUTPUT, TEMP_DIR, HF_HOME → paths.*
+      - GPU_WORKER_URL → asr.gpu_worker_url
+    """
+    result = deepcopy(merged)
+
+    paths = result.setdefault("paths", {})
+    path_env_map = {
+        "MEDIA_INPUT": "media_input",
+        "MEDIA_OUTPUT": "media_output",
+        "TEMP_DIR": "temp_dir",
+        "HF_HOME": "hf_cache",
+    }
+    for env_key, yaml_key in path_env_map.items():
+        value = os.environ.get(env_key)
+        if value:
+            paths[yaml_key] = value
+            logger.debug("环境变量覆盖配置: %s -> paths.%s", env_key, yaml_key)
+
+    gpu_worker_url = os.environ.get("GPU_WORKER_URL")
+    if gpu_worker_url:
+        asr = result.setdefault("asr", {})
+        asr["gpu_worker_url"] = gpu_worker_url
+        logger.debug("环境变量覆盖配置: GPU_WORKER_URL -> asr.gpu_worker_url")
+
+    return result
 
 
 def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:

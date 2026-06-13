@@ -17,7 +17,7 @@ def sample_settings_yaml() -> dict[str, Any]:
         "requirements": {
             "min_ram_gb": 1,
             "min_disk_free_gb": 0.1,
-            "min_python": "3.13",
+            "min_python": "3.14",
             "required_tools": [],
         },
         "paths": {

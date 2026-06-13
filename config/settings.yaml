@@ -7,7 +7,7 @@
 requirements:
   min_ram_gb: 4
   min_disk_free_gb: 10
-  min_python: "3.13"
+  min_python: "3.14"
   required_tools: [ffmpeg, ffprobe]
 
 paths:
@@ -33,6 +33,7 @@ asr:
   beam_size: 5
   vad_filter: true
   language: auto
+  gpu_worker_url: ""
 
 tts:
   engine: edge_tts

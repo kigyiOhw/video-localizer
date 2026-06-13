@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from unittest import mock
 
 import pytest
 import yaml
@@ -15,6 +16,7 @@ from config import (
     SubtitleConfig,
     TTSConfig,
     TranslateConfig,
+    _apply_env_overrides,
     _deep_merge,
 )
 from config.requirements import select_profile
@@ -43,11 +45,13 @@ class TestASRConfig:
         assert c.compute_type == "int8"
         assert c.beam_size == 5
         assert c.vad_filter is True
+        assert c.gpu_worker_url == ""
 
     def test_custom(self) -> None:
-        c = ASRConfig.from_dict({"model_size": "large-v3", "device": "cuda"})
+        c = ASRConfig.from_dict({"model_size": "large-v3", "device": "cuda", "gpu_worker_url": "http://worker:9001"})
         assert c.model_size == "large-v3"
         assert c.device == "cuda"
+        assert c.gpu_worker_url == "http://worker:9001"
 
 
 class TestTTSConfig:
@@ -161,6 +165,53 @@ class TestDeepMerge:
 
     def test_empty_override(self) -> None:
         assert _deep_merge({"a": 1}, {}) == {"a": 1}
+
+
+# ---------------------------------------------------------------------------
+# 环境变量覆盖测试
+# ---------------------------------------------------------------------------
+
+
+class TestEnvOverrides:
+    """验证环境变量能覆盖 YAML 配置。"""
+
+    def test_apply_env_overrides_paths(self) -> None:
+        base = {
+            "paths": {
+                "media_input": "/tmp/in",
+                "media_output": "/tmp/out",
+                "temp_dir": "/tmp/temp",
+                "hf_cache": "/tmp/hf",
+            },
+        }
+        import os
+        env = {
+            "MEDIA_INPUT": "/media/input",
+            "MEDIA_OUTPUT": "/media/output",
+            "TEMP_DIR": "/media/temp",
+            "HF_HOME": "/models/huggingface",
+        }
+        with mock.patch.dict(os.environ, env, clear=False):
+            result = _apply_env_overrides(base)
+
+        assert result["paths"]["media_input"] == "/media/input"
+        assert result["paths"]["media_output"] == "/media/output"
+        assert result["paths"]["temp_dir"] == "/media/temp"
+        assert result["paths"]["hf_cache"] == "/models/huggingface"
+
+    def test_apply_env_overrides_gpu_worker_url(self) -> None:
+        base = {"asr": {"engine": "whisper_local"}}
+        import os
+        with mock.patch.dict(os.environ, {"GPU_WORKER_URL": "http://host.docker.internal:9001"}, clear=False):
+            result = _apply_env_overrides(base)
+        assert result["asr"]["gpu_worker_url"] == "http://host.docker.internal:9001"
+
+    def test_apply_env_overrides_no_env(self) -> None:
+        """无相关环境变量时保持原配置。"""
+        base = {"paths": {"media_input": "/tmp/in"}, "asr": {"engine": "whisper_local"}}
+        result = _apply_env_overrides(base)
+        assert result["paths"]["media_input"] == "/tmp/in"
+        assert "gpu_worker_url" not in result.get("asr", {})
 
 
 # ---------------------------------------------------------------------------
