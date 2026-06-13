@@ -38,3 +38,8 @@ router.include_router(translate_router, tags=["translate"])
 from web.api.pipeline import router as pipeline_router  # noqa: E402
 
 router.include_router(pipeline_router, tags=["pipeline"])
+
+# Stage 5: 切换默认轨道
+from web.api.track import router as track_router  # noqa: E402
+
+router.include_router(track_router, tags=["track"])
