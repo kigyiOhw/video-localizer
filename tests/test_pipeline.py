@@ -23,7 +23,7 @@ from processing.pipeline.full_pipeline import (
     run_full_pipeline_stream,
 )
 
-FAKE_VIDEO = Path("/fake/video.mp4")
+FAKE_VIDEO = Path("/tmp/video.mp4")
 
 
 # ---------------------------------------------------------------------------
@@ -62,7 +62,7 @@ def _make_mux_result():
     from processing.core.mux import MuxResult
     return MuxResult(
         input_video=FAKE_VIDEO,
-        output_path=Path("/fake/output/video_subtitled.mkv"),
+        output_path=Path("/tmp/output/video_subtitled.mkv"),
         output_size=2048, subtitle_count=1, added_track_index=0, language="zho",
     )
 
@@ -103,11 +103,13 @@ def _mock_pipeline_deps_no_audio():
 @pytest.fixture
 def mock_asr_engine():
     engine = mock.Mock(spec=ASREngine)
-    engine.transcribe.return_value = [
+    segments = [
         ASRSegment(0.0, 2.0, "Hello world", 0.95),
         ASRSegment(2.0, 4.5, "How are you", 0.92),
         ASRSegment(4.5, 7.0, "I am fine", 0.88),
     ]
+    engine.transcribe.return_value = segments
+    engine.transcribe_stream.return_value = iter(segments)
     engine.detect_language.return_value = "en"
     return engine
 
@@ -244,23 +246,20 @@ class TestFullPipelineStream:
         assert events[-1]["event"] == "error"
         assert "不存在" in events[-1]["data"]["message"]
 
-    def test_with_asr_model(self, mock_translate_engine):
+    def test_with_asr_stream(self, mock_translate_engine):
+        """流式 ASR 通过 ASREngine.transcribe_stream 逐片段推送。"""
         asr_engine = mock.Mock(spec=ASREngine)
         asr_engine._model_size = "tiny"
-        asr_engine._beam_size = 5
-        asr_engine._vad_filter = True
-
-        fake_model = mock.Mock()
-        fake_seg1 = mock.Mock(start=0.0, end=2.0, text="Hello", avg_logprob=-1.0)
-        fake_seg2 = mock.Mock(start=2.0, end=4.0, text="World", avg_logprob=-0.5)
-        fake_info = mock.Mock(language="en")
-        fake_model.transcribe.return_value = (iter([fake_seg1, fake_seg2]), fake_info)
+        asr_engine.detect_language.return_value = "en"
+        asr_engine.transcribe_stream.return_value = iter([
+            ASRSegment(0.0, 2.0, "Hello", 0.9),
+            ASRSegment(2.0, 4.0, "World", 0.9),
+        ])
 
         with _mock_pipeline_deps():
             events = list(run_full_pipeline_stream(
                 video_path=FAKE_VIDEO, target_language="Chinese",
                 asr_engine=asr_engine, translate_engine=mock_translate_engine,
-                asr_model=fake_model,
             ))
 
         segment_events = [e for e in events if e["event"] == "segment"]
@@ -330,15 +329,42 @@ def test_app_pipeline() -> FastAPI:
     template_dir = Path(__file__).resolve().parent.parent / "web" / "templates"
     templates = Jinja2Templates(directory=str(template_dir))
 
+    from web.api import router as api_router
+    app.include_router(api_router)
+
+    # 统一把 API 模块的 settings 指向宽泛根目录，避免路径校验阻塞测试
+    import web.api.probe as probe_module
+    import web.api.extract as extract_module
+    import web.api.subtitle as subtitle_module
+    import web.api.pipeline as pipeline_module
+
+    def _test_settings():
+        cfg = umock.Mock()
+        cfg.paths.media_input = Path("/tmp")
+        cfg.paths.media_output = Path("/tmp")
+        cfg.paths.temp_dir = Path("/tmp")
+        cfg.ffmpeg.executable = "ffmpeg"
+        cfg.ffmpeg.ffprobe_executable = "ffprobe"
+        cfg.translate.target_language = "Chinese"
+        cfg.translate.source_language = ""
+        return cfg
+
+    probe_module._get_settings = _test_settings
+    extract_module._get_settings = _test_settings
+    subtitle_module._get_settings = _test_settings
+    pipeline_module._get_settings = _test_settings
+
     mock_asr = umock.Mock(spec=ASREngine)
     mock_asr.transcribe.return_value = [
         ASRSegment(0.0, 2.0, "Hello", 0.95),
         ASRSegment(2.0, 4.0, "World", 0.90),
     ]
+    mock_asr.transcribe_stream.return_value = iter([
+        ASRSegment(0.0, 2.0, "Hello", 0.95),
+        ASRSegment(2.0, 4.0, "World", 0.90),
+    ])
     mock_asr.detect_language.return_value = "en"
     mock_asr._model_size = "tiny"
-    mock_asr._beam_size = 5
-    mock_asr._vad_filter = False
 
     mock_trans = umock.Mock(spec=TranslateEngine)
     mock_trans.translate.return_value = [
@@ -350,7 +376,6 @@ def test_app_pipeline() -> FastAPI:
         [TranslateSegment(2.0, 4.0, "World", "世界")],
     ])
 
-    import web.api.pipeline as pipeline_module
     pipeline_module._get_asr_engine = lambda: mock_asr
     pipeline_module._get_translate_engine = lambda: mock_trans
 

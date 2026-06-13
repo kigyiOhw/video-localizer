@@ -8,6 +8,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Iterator
 
 
 @dataclass
@@ -55,6 +56,25 @@ class ASREngine(ABC):
             ISO 639-1 语言代码，或 None（无法检测时）。
         """
         ...
+
+    def transcribe_stream(
+        self,
+        audio_path: Path,
+        language: str | None = None,
+    ) -> Iterator[ASRSegment]:
+        """流式转写音频，逐片段 yield。
+
+        默认实现调用 transcribe() 后逐个 yield；支持流式的实现可覆盖本方法。
+
+        Args:
+            audio_path: 音频文件路径。
+            language: 源语言代码，None 表示自动检测。
+
+        Yields:
+            ASRSegment 片段。
+        """
+        for seg in self.transcribe(audio_path, language=language):
+            yield seg
 
 
 def segments_to_srt(segments: list[ASRSegment]) -> str:

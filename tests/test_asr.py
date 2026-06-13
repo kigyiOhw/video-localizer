@@ -141,22 +141,42 @@ class TestWhisperLocalEngine:
         eng = WhisperLocalEngine()
         assert eng._model is None
 
-    def test_transcribe_filters_empty(self, engine) -> None:
-        """空文本片段被过滤。"""
-        segs = [
-            FakeSegment(0.0, 2.0, "hello"),
-            FakeSegment(2.5, 5.0, ""),   # 空，应过滤
-            FakeSegment(5.0, 7.0, "   "),  # 空白，应过滤
-            FakeSegment(7.0, 9.0, "world"),
+    def test_transcribe_stream(self, engine) -> None:
+        """流式转写逐片段 yield。"""
+        segments = list(engine.transcribe_stream(Path("/fake/audio.wav")))
+        assert len(segments) == 2
+        assert segments[0].text == "こんにちは"
+        assert segments[1].text == "元気ですか"
+
+
+# ---------------------------------------------------------------------------
+# TestASREngineDefaultStream
+# ---------------------------------------------------------------------------
+
+
+class ConcreteASREngine(ASREngine):
+    """用于测试默认 transcribe_stream 实现的子类。"""
+
+    def transcribe(self, audio_path: Path, language: str | None = None) -> list[ASRSegment]:
+        return [
+            ASRSegment(0.0, 1.0, "hello", 0.9),
+            ASRSegment(1.0, 2.0, "world", 0.8),
         ]
-        engine._model.transcribe.return_value = (iter(segs), FakeInfo())
-        segments = engine.transcribe(Path("/fake/audio.wav"))
+
+    def detect_language(self, audio_path: Path) -> str | None:
+        return "en"
+
+
+class TestASREngineDefaultStream:
+    """ASREngine 默认流式实现测试。"""
+
+    def test_default_stream_wraps_transcribe(self) -> None:
+        """默认 transcribe_stream 调用 transcribe 后逐个 yield。"""
+        engine = ConcreteASREngine()
+        segments = list(engine.transcribe_stream(Path("/fake/audio.wav")))
         assert len(segments) == 2
         assert segments[0].text == "hello"
         assert segments[1].text == "world"
-
-
-from web.api.asr import _get_engine
 
 
 # ---------------------------------------------------------------------------

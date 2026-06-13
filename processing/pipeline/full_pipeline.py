@@ -271,7 +271,6 @@ def run_full_pipeline_stream(
     target_language: str,
     asr_engine: ASREngine,
     translate_engine: TranslateEngine,
-    asr_model: Any = None,  # WhisperModel 实例（用于逐片段流式推送）
     source_language: str = "",
     output_dir: Path | None = None,
     ffmpeg_path: str = "ffmpeg",
@@ -357,63 +356,27 @@ def run_full_pipeline_stream(
     })
 
     all_asr_segments: list[dict[str, Any]] = []
-    detected_lang = ""
 
-    if asr_model is not None:
-        # 流式模式：直接使用 WhisperModel 的生成器逐片段推送
-        try:
-            seg_iter, info = asr_model.transcribe(
-                str(audio_path),
-                language=_asr_lang(source_language),
-                beam_size=getattr(asr_engine, '_beam_size', 5),
-                vad_filter=getattr(asr_engine, '_vad_filter', True),
-                vad_parameters=dict(
-                    min_silence_duration_ms=500, threshold=0.5,
-                ) if getattr(asr_engine, '_vad_filter', True) else None,
-            )
-            detected_lang = info.language
-            seg_count = 0
-            for seg in seg_iter:
-                text = seg.text.strip()
-                if not text:
-                    continue
-                seg_count += 1
-                seg_data = {
-                    "start": round(seg.start, 3),
-                    "end": round(seg.end, 3),
-                    "text": text,
-                    "confidence": round(getattr(seg, "avg_logprob", 0.0), 3),
-                    "index": seg_count,
-                }
-                all_asr_segments.append(seg_data)
-                yield _evt("segment", seg_data)
-            logger.info("ASR 流式完成: %d 片段, 语言=%s", seg_count, detected_lang)
-        except Exception as e:
-            yield _evt("error", {"message": f"语音识别失败: {e}"})
-            return
-    else:
-        # 非流式回退：使用引擎的 transcribe 方法
-        try:
-            asr_segments = asr_engine.transcribe(audio_path, language=_asr_lang(source_language))
-        except Exception as e:
-            yield _evt("error", {"message": f"语音识别失败: {e}"})
-            return
+    # 检测语言（与同步版一致）
+    detected_lang = _get_detected_language(asr_engine, audio_path, source_language)
 
-        if not asr_segments:
-            yield _evt("error", {"message": "语音识别未返回任何片段。"})
-            return
-
-        detected_lang = _get_detected_language(asr_engine, audio_path, source_language)
-        for i, seg in enumerate(asr_segments, 1):
+    try:
+        seg_count = 0
+        for seg in asr_engine.transcribe_stream(audio_path, language=_asr_lang(source_language)):
+            seg_count += 1
             seg_data = {
                 "start": seg.start,
                 "end": seg.end,
                 "text": seg.text,
                 "confidence": seg.confidence,
-                "index": i,
+                "index": seg_count,
             }
             all_asr_segments.append(seg_data)
             yield _evt("segment", seg_data)
+        logger.info("ASR 流式完成: %d 片段, 语言=%s", seg_count, detected_lang)
+    except Exception as e:
+        yield _evt("error", {"message": f"语音识别失败: {e}"})
+        return
 
     if not all_asr_segments:
         yield _evt("error", {"message": "语音识别未返回任何片段。"})

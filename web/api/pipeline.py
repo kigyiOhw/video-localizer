@@ -42,6 +42,9 @@ def _get_translate_engine():
 # ---------------------------------------------------------------------------
 
 
+from web.api.utils import _resolve_allowed_path
+
+
 def _get_templates(request: Request):
     from app import templates
     return templates
@@ -53,10 +56,15 @@ def _get_settings():
 
 
 def _resolve_path(file_path: str) -> Path:
-    p = Path(file_path)
-    if p.is_absolute():
-        return p
-    return _get_settings().paths.media_input / p
+    """将输入的路径字符串解析为 Path 对象并校验允许范围。
+
+    允许访问 media_input 与 temp_dir 目录。
+    """
+    settings = _get_settings()
+    return _resolve_allowed_path(
+        file_path,
+        [settings.paths.media_input, settings.paths.temp_dir],
+    )
 
 
 def _sse(event: str, data: dict) -> str:
@@ -89,7 +97,11 @@ async def pipeline_run(
     target = target_language or settings.translate.target_language
     source = source_language or settings.translate.source_language or ""
 
-    path = _resolve_path(video_path.strip())
+    try:
+        path = _resolve_path(video_path.strip())
+    except ValueError as e:
+        logger.warning("流水线请求路径非法: %s", e)
+        return _pipeline_error(request, templates, str(e), 403)
 
     logger.info(
         "流水线请求: %s → %s (源语言=%s)",
@@ -175,7 +187,14 @@ async def pipeline_run_stream(
     settings = _get_settings()
     target = target_language or settings.translate.target_language
     source = source_language or settings.translate.source_language or ""
-    path = _resolve_path(video_path.strip())
+    try:
+        path = _resolve_path(video_path.strip())
+    except ValueError as e:
+        logger.warning("流水线流式请求路径非法: %s", e)
+        return StreamingResponse(
+            _single_error_sse(str(e)),
+            media_type="text/event-stream",
+        )
 
     return StreamingResponse(
         _sse_generator(request, path, target, source),
@@ -214,9 +233,6 @@ async def _sse_generator(
         yield _sse("error", {"message": str(e)})
         return
 
-    # 尝试获取底层 WhisperModel 用于逐片段推送
-    asr_model = getattr(asr_engine, '_model', None)
-
     settings = _get_settings()
 
     from processing.pipeline.full_pipeline import run_full_pipeline_stream
@@ -229,7 +245,6 @@ async def _sse_generator(
                 target_language=target_language,
                 asr_engine=asr_engine,
                 translate_engine=translate_engine,
-                asr_model=asr_model,
                 source_language=source_language,
                 ffmpeg_path=settings.ffmpeg.executable,
                 ffprobe_path=settings.ffmpeg.ffprobe_executable,

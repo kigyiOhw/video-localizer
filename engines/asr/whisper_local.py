@@ -10,6 +10,7 @@ import os
 import site
 import sys
 from pathlib import Path
+from typing import Iterator
 
 logger = logging.getLogger("video_localizer.asr.whisper")
 
@@ -175,6 +176,56 @@ class WhisperLocalEngine(ASREngine):
         )
 
         return segments
+
+    def transcribe_stream(
+        self,
+        audio_path: Path,
+        language: str | None = None,
+    ) -> Iterator[ASRSegment]:
+        """流式转写音频，逐片段 yield。
+
+        Args:
+            audio_path: 音频文件路径。
+            language: ISO 639-1 语言代码，None 则自动检测。
+
+        Yields:
+            ASRSegment 片段。
+        """
+        model = self._get_model()
+
+        logger.info(
+            "开始流式转写: %s (语言=%s, beam=%d, vad=%s)",
+            audio_path.name, language or "auto", self._beam_size, self._vad_filter,
+        )
+
+        seg_iter, info = model.transcribe(
+            str(audio_path),
+            language=language,
+            beam_size=self._beam_size,
+            vad_filter=self._vad_filter,
+            vad_parameters=dict(
+                min_silence_duration_ms=500,
+                threshold=0.5,
+            ) if self._vad_filter else None,
+        )
+
+        seg_count = 0
+        for seg in seg_iter:
+            text = seg.text.strip()
+            if not text:
+                continue
+            seg_count += 1
+            yield ASRSegment(
+                start=round(seg.start, 3),
+                end=round(seg.end, 3),
+                text=text,
+                confidence=round(seg.avg_logprob, 3) if hasattr(seg, "avg_logprob") else 0.0,
+            )
+
+        logger.info(
+            "流式转写完成: %d 个片段, 语言=%s (%.2f)",
+            seg_count, info.language, info.language_probability,
+        )
 
     def detect_language(self, audio_path: Path) -> str | None:
         """检测音频中的主要语言。
