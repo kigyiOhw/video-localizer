@@ -180,6 +180,15 @@ async def pipeline_page(request: Request):
     })
 
 
+@app.get("/track")
+async def track_page(request: Request):
+    """切换默认轨道页面。"""
+    logger.debug("GET /track")
+    return templates.TemplateResponse(request, "track.html", {
+        "version": __version__,
+    })
+
+
 @app.get("/api/health")
 async def health():
     """健康检查 + 当前配置信息（JSON）。"""

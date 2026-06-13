@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}切换默认轨道 - Video-Localizer{% endblock %}
+
+{% block content %}
+<div class="subtitle-panel">
+    <h2>🎚️ 切换默认轨道</h2>
+    <p class="desc" style="margin-bottom: 24px;">将视频中的指定视频/音频/字幕轨道设为默认，不重编码</p>
+
+    <form id="track-form"
+          hx-post="/api/track/default"
+          hx-target="#track-results"
+          hx-indicator="#track-spinner">
+
+        <div class="input-group">
+            <label>📹 媒体文件路径</label>
+            <input type="text" name="file_path" class="path-input"
+                   placeholder="如 /media/input/movie.mkv" required>
+        </div>
+
+        <div class="options-row">
+            <div class="option-group">
+                <label>🎞️ 流类型</label>
+                <select name="stream_type" required>
+                    <option value="audio" selected>音频 (audio)</option>
+                    <option value="subtitle">字幕 (subtitle)</option>
+                    <option value="video">视频 (video)</option>
+                </select>
+            </div>
+            <div class="option-group">
+                <label>#️⃣ 流序号</label>
+                <input type="number" name="stream_index" min="0" value="0" required>
+            </div>
+            <div class="option-group">
+                <label>📦 容器格式</label>
+                <div class="container-radio-group">
+                    <label class="container-radio">
+                        <input type="radio" name="container" value="mkv" checked> MKV（推荐）
+                    </label>
+                    <label class="container-radio">
+                        <input type="radio" name="container" value="mp4"> MP4
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="subtitle-actions">
+            <button type="submit" class="btn btn-primary">🎚️ 切换默认轨道</button>
+            <span id="track-spinner" class="htmx-indicator" style="display: inline-flex; align-items: center; gap: 6px; color: var(--text-dim); font-size: 0.85rem;">
+                <span class="spinner"></span> 处理中...
+            </span>
+        </div>
+    </form>
+</div>
+
+<div id="track-results"></div>
+{% endblock %}
