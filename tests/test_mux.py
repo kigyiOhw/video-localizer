@@ -96,6 +96,7 @@ class TestBuildAddSubtitleArgs:
             output_path=Path("/output/movie_subtitled.mkv"),
             language="eng",
             container="mkv",
+            existing_sub_count=0,
             ffmpeg_path="ffmpeg",
             overwrite=False,
         )
@@ -117,6 +118,23 @@ class TestBuildAddSubtitleArgs:
         assert args[meta_idx + 1] == "language=eng"
         assert str(Path("/output/movie_subtitled.mkv")) in args
 
+    def test_mkv_existing_subtitle_metadata_index(self) -> None:
+        """输入视频已有字幕轨时，metadata 索引应指向新轨。"""
+        args = _build_add_subtitle_args(
+            video_path=Path("/input/movie.mkv"),
+            subtitle_path=Path("/input/sub.srt"),
+            output_path=Path("/output/movie_subtitled.mkv"),
+            language="eng",
+            container="mkv",
+            existing_sub_count=2,
+            ffmpeg_path="ffmpeg",
+            overwrite=False,
+        )
+        assert "-metadata:s:s:2" in args
+        meta_idx = args.index("-metadata:s:s:2")
+        assert args[meta_idx + 1] == "language=eng"
+        assert "-metadata:s:s:0" not in args
+
     def test_mp4_adds_mov_text(self) -> None:
         args = _build_add_subtitle_args(
             video_path=Path("/input/movie.mp4"),
@@ -124,6 +142,7 @@ class TestBuildAddSubtitleArgs:
             output_path=Path("/output/movie_subtitled.mp4"),
             language="jpn",
             container="mp4",
+            existing_sub_count=0,
             ffmpeg_path="ffmpeg",
             overwrite=False,
         )
@@ -138,6 +157,7 @@ class TestBuildAddSubtitleArgs:
             output_path=Path("/output/movie_subtitled.mkv"),
             language="eng",
             container="mkv",
+            existing_sub_count=0,
             ffmpeg_path="ffmpeg",
             overwrite=True,
         )
@@ -151,6 +171,7 @@ class TestBuildAddSubtitleArgs:
             output_path=Path("/output dir/movie_subtitled.mkv"),
             language="eng",
             container="mkv",
+            existing_sub_count=0,
             ffmpeg_path="ffmpeg",
             overwrite=False,
         )
@@ -164,6 +185,7 @@ class TestBuildAddSubtitleArgs:
             output_path=Path("/output/out.mkv"),
             language="zho",
             container="mkv",
+            existing_sub_count=0,
             ffmpeg_path="/usr/local/bin/ffmpeg",
             overwrite=False,
         )

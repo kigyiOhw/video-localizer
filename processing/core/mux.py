@@ -35,7 +35,7 @@ class MuxResult:
     output_path: Path        # 输出文件路径
     output_size: int         # 输出文件大小（字节）
     subtitle_count: int      # 输出文件的字幕轨总数
-    added_track_index: int   # 新添加的字幕轨索引（全局 stream index）
+    added_track_index: int   # 新添加的字幕轨索引（字幕流中的序号）
     language: str            # 设置的语言代码，e.g. "eng"
 
 
@@ -118,6 +118,7 @@ def add_subtitle(
         output_path=output_path,
         language=language,
         container=container,
+        existing_sub_count=existing_sub_count,
         ffmpeg_path=ffmpeg_path,
         overwrite=overwrite,
     )
@@ -179,6 +180,7 @@ def _build_add_subtitle_args(
     output_path: Path,
     language: str,
     container: str,
+    existing_sub_count: int,
     ffmpeg_path: str,
     overwrite: bool,
 ) -> list[str]:
@@ -186,11 +188,14 @@ def _build_add_subtitle_args(
 
     MKV:
       ffmpeg [-y/-n] -i <video> -i <sub> -c copy -map 0 -map 1
-             -metadata:s:s:0 language=<lang> <output>.mkv
+             -metadata:s:s:<idx> language=<lang> <output>.mkv
 
     MP4:
       ffmpeg [-y/-n] -i <video> -i <sub> -c copy -c:s mov_text
-             -map 0 -map 1 -metadata:s:s:0 language=<lang> <output>.mp4
+             -map 0 -map 1 -metadata:s:s:<idx> language=<lang> <output>.mp4
+
+    Args:
+        existing_sub_count: 输入视频已有的字幕轨数量，用于定位新轨的 metadata 索引。
     """
     cmd = [ffmpeg_path]
     cmd.append("-y" if overwrite else "-n")
@@ -207,7 +212,7 @@ def _build_add_subtitle_args(
     cmd += [
         "-map", "0",
         "-map", "1",
-        "-metadata:s:s:0", f"language={language}",
+        "-metadata:s:s:{existing_sub_count}".format(existing_sub_count=existing_sub_count), f"language={language}",
         str(output_path),
     ]
 
