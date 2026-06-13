@@ -43,3 +43,8 @@ router.include_router(pipeline_router, tags=["pipeline"])
 from web.api.track import router as track_router  # noqa: E402
 
 router.include_router(track_router, tags=["track"])
+
+# Stage 7: 音频轨管理 + 音画同步
+from web.api.audio import router as audio_router  # noqa: E402
+
+router.include_router(audio_router, tags=["audio"])
