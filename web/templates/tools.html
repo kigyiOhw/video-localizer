@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}媒体工具 — Video-Localizer{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <h1>🔧 媒体工具</h1>
+    <p class="subtitle">视频流分析、字幕与音频轨道管理</p>
+    <p class="desc">探测媒体信息、提取流、添加字幕、管理音轨、切换默认轨道</p>
+</section>
+
+<section class="hub-grid">
+    <a href="/probe" class="hub-card">
+        <span class="hub-icon">🔍</span>
+        <h3>流探测</h3>
+        <p>探测视频/音频/字幕流信息，查看编码、码率、时长</p>
+        <span class="hub-arrow">进入 →</span>
+    </a>
+    <a href="/extract" class="hub-card">
+        <span class="hub-icon">📤</span>
+        <h3>流提取</h3>
+        <p>从媒体文件中提取单个音轨、字幕轨或视频流</p>
+        <span class="hub-arrow">进入 →</span>
+    </a>
+    <a href="/subtitle" class="hub-card">
+        <span class="hub-icon">📝</span>
+        <h3>字幕管理</h3>
+        <p>给视频添加外部 SRT/ASS 软字幕，设置语言标记</p>
+        <span class="hub-arrow">进入 →</span>
+    </a>
+    <a href="/audio" class="hub-card">
+        <span class="hub-icon">🔊</span>
+        <h3>音频管理</h3>
+        <p>添加、替换、移除、静音音轨，调整同步与速度</p>
+        <span class="hub-arrow">进入 →</span>
+    </a>
+    <a href="/track" class="hub-card">
+        <span class="hub-icon">🎚️</span>
+        <h3>默认轨道</h3>
+        <p>切换视频/音频/字幕的默认轨道标记</p>
+        <span class="hub-arrow">进入 →</span>
+    </a>
+</section>
+{% endblock %}

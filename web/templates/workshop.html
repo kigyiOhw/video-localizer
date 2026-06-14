@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}AI 工坊 — Video-Localizer{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <h1>🤖 AI 工坊</h1>
+    <p class="subtitle">AI 驱动的语音识别、翻译与端到端流水线</p>
+    <p class="desc">Whisper 语音识别 → LLM 翻译 → 自动封装字幕，一站式 AI 字幕生产</p>
+</section>
+
+<section class="hub-grid">
+    <a href="/asr" class="hub-card">
+        <span class="hub-icon">🎙️</span>
+        <h3>语音识别</h3>
+        <p>faster-whisper 本地 ASR，将视频语音转为 SRT 字幕</p>
+        <span class="hub-arrow">进入 →</span>
+    </a>
+    <a href="/translate" class="hub-card">
+        <span class="hub-icon">🌐</span>
+        <h3>翻译</h3>
+        <p>LLM 驱动的字幕翻译，支持多种语言，保持时间戳同步</p>
+        <span class="hub-arrow">进入 →</span>
+    </a>
+    <a href="/pipeline" class="hub-card">
+        <span class="hub-icon">🔗</span>
+        <h3>流水线</h3>
+        <p>端到端一站式：提取音频 → ASR → 翻译 → 封装字幕</p>
+        <span class="hub-arrow">进入 →</span>
+    </a>
+</section>
+{% endblock %}
