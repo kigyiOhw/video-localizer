@@ -23,27 +23,19 @@
 
 <section class="features">
     <h2>功能模块</h2>
-    <div class="card-grid">
-        <div class="card">
-            <h3>📋 字幕管理</h3>
-            <p>提取、添加、切换软字幕<br>格式转换 SRT ↔ ASS ↔ WebVTT</p>
-            <span class="badge">Phase 1</span>
-        </div>
-        <div class="card">
-            <h3>🎤 语音识别</h3>
-            <p>Whisper 本地 ASR<br>VAD 过滤静音，减少幻觉</p>
-            <span class="badge">Phase 2</span>
-        </div>
-        <div class="card">
-            <h3>🌐 翻译</h3>
-            <p>LLM / DeepL 多语翻译<br>支持本地和云端引擎</p>
-            <span class="badge">Phase 2</span>
-        </div>
-        <div class="card">
-            <h3>🔊 语音合成</h3>
-            <p>Edge-TTS / XTTS 配音<br>自动音频对齐</p>
-            <span class="badge">Phase 3</span>
-        </div>
+    <div class="hub-grid">
+        <a href="/tools" class="hub-card">
+            <span class="hub-icon">🔧</span>
+            <h3>媒体工具</h3>
+            <p>流探测 · 流提取 · 字幕添加<br>音频轨管理 · 默认轨道切换</p>
+            <span class="hub-arrow">进入 →</span>
+        </a>
+        <a href="/workshop" class="hub-card">
+            <span class="hub-icon">🤖</span>
+            <h3>AI 工坊</h3>
+            <p>Whisper 语音识别 · LLM 翻译<br>端到端流水线：ASR → 翻译 → 封装</p>
+            <span class="hub-arrow">进入 →</span>
+        </a>
     </div>
 </section>
 {% endblock %}

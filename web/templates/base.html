@@ -17,14 +17,8 @@
         </div>
         <div class="nav-tabs">
             <a href="/" class="nav-tab" data-page="home">🏠 首页</a>
-            <a href="/probe" class="nav-tab" data-page="probe">🔍 流探测</a>
-            <a href="/extract" class="nav-tab" data-page="extract">📤 流提取</a>
-            <a href="/asr" class="nav-tab" data-page="asr">🎙️ 语音识别</a>
-            <a href="/subtitle" class="nav-tab" data-page="subtitle">📝 字幕管理</a>
-            <a href="/translate" class="nav-tab" data-page="translate">🌐 翻译</a>
-            <a href="/pipeline" class="nav-tab" data-page="pipeline">🔗 流水线</a>
-            <a href="/track" class="nav-tab" data-page="track">🎚️ 默认轨道</a>
-            <a href="/audio" class="nav-tab" data-page="audio">🔊 音频管理</a>
+            <a href="/tools" class="nav-tab" data-page="tools">🔧 媒体工具</a>
+            <a href="/workshop" class="nav-tab" data-page="workshop">🤖 AI 工坊</a>
         </div>
     </nav>
 
@@ -37,15 +31,20 @@
     </footer>
 
     <script>
-    // 根据当前路径高亮导航标签
+    // 根据当前路径高亮导航标签（子页面高亮父级 tab）
     (function() {
         var path = window.location.pathname;
+        // 子页面 → 父级 tab 映射
+        var childToParent = {
+            '/probe': 'tools', '/extract': 'tools', '/subtitle': 'tools',
+            '/track': 'tools', '/audio': 'tools',
+            '/asr': 'workshop', '/translate': 'workshop', '/pipeline': 'workshop',
+        };
+        var activePage = childToParent[path] || path.replace(/^\//, '') || 'home';
+        if (activePage === '') activePage = 'home';
         var tabs = document.querySelectorAll('.nav-tab');
         tabs.forEach(function(tab) {
-            var page = tab.getAttribute('data-page');
-            if (page === 'home' && (path === '/' || path === '')) {
-                tab.classList.add('active');
-            } else if (page !== 'home' && path.startsWith('/' + page)) {
+            if (tab.getAttribute('data-page') === activePage) {
                 tab.classList.add('active');
             }
         });

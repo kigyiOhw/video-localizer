@@ -688,6 +688,58 @@ body {
     font-size: 0.9rem;
 }
 
+/* ---- Hub Cards ---- */
+
+.hub-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+}
+
+.hub-card {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px 24px;
+    text-decoration: none;
+    color: var(--text);
+    transition: border-color 0.15s, background 0.15s, transform 0.15s;
+}
+
+.hub-card:hover {
+    border-color: var(--accent);
+    background: var(--surface-hover);
+    transform: translateY(-2px);
+}
+
+.hub-icon {
+    font-size: 2rem;
+    margin-bottom: 12px;
+}
+
+.hub-card h3 {
+    font-size: 1rem;
+    margin-bottom: 8px;
+    color: var(--text);
+}
+
+.hub-card p {
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    line-height: 1.5;
+    margin-bottom: 14px;
+    flex: 1;
+}
+
+.hub-arrow {
+    font-size: 0.8rem;
+    color: var(--accent);
+    font-weight: 600;
+}
+
 /* ---- Footer ---- */
 
 .footer {
