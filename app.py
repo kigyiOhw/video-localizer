@@ -47,21 +47,6 @@ logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
 # 因为 uvicorn --reload 的 worker 进程可能不会重新读取 .pth。
 # ---------------------------------------------------------------------------
 
-_SHARED_SITE_PACKAGES = [
-    r"D:\Softwares Dev\pytorch-env\Lib\site-packages",
-    r"D:\AI\shared-venv\Lib\site-packages",
-]
-
-for _sp in _SHARED_SITE_PACKAGES:
-    if _sp not in sys.path:
-        sys.path.insert(0, _sp)
-        logger.info("已注入共享环境路径: %s", _sp)
-
-# 诊断：确认共享路径在 sys.path 中
-_shared_in_path = [p for p in sys.path if "shared-venv" in p or "pytorch-env" in p]
-logger.info("sys.path 共享条目: %s", _shared_in_path if _shared_in_path else "⚠ 未找到任何共享路径!")
-
-
 # ---------------------------------------------------------------------------
 # 配置加载（模块级别，失败立即报错）
 # ---------------------------------------------------------------------------
@@ -75,6 +60,12 @@ logger.info("=" * 50)
 
 # 加载配置
 settings = Settings.load()
+
+# 注入共享 Python 环境路径（从本地配置读取，不硬编码绝对路径）
+for _sp in settings.paths.shared_site_packages:
+    if _sp not in sys.path:
+        sys.path.insert(0, _sp)
+        logger.info("已注入共享环境路径: %s", _sp)
 logger.info("配置加载完成")
 
 # 硬件检测 + 自动选择配置档

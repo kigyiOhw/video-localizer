@@ -29,6 +29,7 @@ class PathsConfig:
     media_input: Path = Path("/media/input")
     media_output: Path = Path("/media/output")
     temp_dir: Path = Path("/media/temp")
+    shared_site_packages: list[str] = field(default_factory=list)
 
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> "PathsConfig":
@@ -38,6 +39,7 @@ class PathsConfig:
             media_input=Path(d.get("media_input", "/media/input")),
             media_output=Path(d.get("media_output", "/media/output")),
             temp_dir=Path(d.get("temp_dir", "/media/temp")),
+            shared_site_packages=d.get("shared_site_packages", []),
         )
 
 

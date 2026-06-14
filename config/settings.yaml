@@ -16,6 +16,7 @@ paths:
   media_input: /media/input
   media_output: /media/output
   temp_dir: /media/temp
+  # shared_site_packages: []   # 外部 Python 包的 site-packages 路径（本地覆盖用）
 
 ffmpeg:
   executable: ffmpeg
