@@ -45,3 +45,9 @@ When adding a new engine implementation, subclass the abstract base in `engine.p
 - **Default**: `docker compose up -d` (Docker required)
 - **Fallback**: `python app.py` (Python 3.13+ + FFmpeg required)
 - GPU tasks run on the host machine via `worker.py` (:9001), not inside the Docker container
+
+## Testing
+
+- **Use `tmp_path` fixture** for all temporary files and directories — never hardcode absolute paths like `/tmp/` or `/fake/`. On Windows, absolute paths resolve relative to the current drive and leak real directories on disk.
+- **Mock all Path side effects** when patching `Path` methods: if you mock `Path.exists`, also mock `Path.mkdir`, `Path.write_text`, `Path.unlink`, etc. — any unmocked method runs for real and can create/delete files on the actual filesystem.
+- Tests must be runnable without network access (mock external APIs, HuggingFace Hub, Ollama, etc.).
