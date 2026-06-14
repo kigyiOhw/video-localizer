@@ -177,6 +177,21 @@ class FallbackConfig:
         )
 
 
+@dataclass
+class CleanupConfig:
+    """临时文件定时清理配置。"""
+
+    interval_hours: float = 6.0   # 清理间隔（小时）
+    max_age_hours: float = 24.0   # 文件保留时长（小时），超过则删除
+
+    @classmethod
+    def from_dict(cls, d: dict[str, Any]) -> "CleanupConfig":
+        return cls(
+            interval_hours=float(d.get("interval_hours", 6.0)),
+            max_age_hours=float(d.get("max_age_hours", 24.0)),
+        )
+
+
 # ---------------------------------------------------------------------------
 # 顶层 Settings
 # ---------------------------------------------------------------------------
@@ -194,6 +209,7 @@ class Settings:
     translate: TranslateConfig = field(default_factory=TranslateConfig)
     fallback: FallbackConfig = field(default_factory=FallbackConfig)
     requirements: RequirementsConfig = field(default_factory=RequirementsConfig)
+    cleanup: CleanupConfig = field(default_factory=CleanupConfig)
     profiles: dict[str, dict[str, Any]] = field(default_factory=dict)
     selected_profile: str = "cpu"
 
@@ -254,6 +270,7 @@ class Settings:
             translate=TranslateConfig.from_dict(d.get("translate", {})),
             fallback=FallbackConfig.from_dict(d.get("fallback", {})),
             requirements=RequirementsConfig.from_dict(d.get("requirements", {})),
+            cleanup=CleanupConfig.from_dict(d.get("cleanup", {})),
             profiles=deepcopy(d.get("profiles", {})),
         )
 
@@ -283,8 +300,15 @@ class Settings:
             self.tts = TTSConfig.from_dict({**asdict(self.tts), **profile["tts"]})
             logger.debug("  TTS: engine=%s", self.tts.engine)
         if "translate" in profile:
-            self.translate = TranslateConfig.from_dict({**asdict(self.translate), **profile["translate"]})
-            logger.debug("  Translate: engine=%s", self.translate.engine)
+            # 本地配置优先：仅当用户未显式配置翻译引擎时，配置档才覆盖默认值。
+            # 默认值为 "none"——如果当前引擎不是 "none"，说明用户已通过
+            # settings.local.yaml 显式选择，应保留用户选择。
+            if self.translate.engine == "none":
+                self.translate = TranslateConfig.from_dict({**asdict(self.translate), **profile["translate"]})
+                logger.debug("  Translate: engine=%s (来自配置档)", self.translate.engine)
+            else:
+                logger.info("  Translate: 保留本地配置 engine=%s (配置档建议=%s 已忽略)",
+                           self.translate.engine, profile["translate"].get("engine"))
 
     # ------------------------------------------------------------------
     # 目录初始化

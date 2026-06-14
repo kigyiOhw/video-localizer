@@ -2,11 +2,17 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 import sys
+import time
 from contextlib import asynccontextmanager
 from pathlib import Path
+
+# Windows 下 pipe/重定向时 stdout 默认用 GBK，强制 UTF-8 避免日志乱码
+if sys.platform == "win32":
+    sys.stdout.reconfigure(encoding="utf-8")
 
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
@@ -28,6 +34,32 @@ logger = logging.getLogger("video_localizer")
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("urllib3").setLevel(logging.WARNING)
 logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+
+
+# ---------------------------------------------------------------------------
+# 共享 Python 环境路径注入
+#
+# 这些 AI 包体积大、可跨项目复用，安装在外部 venv 中：
+#   pytorch-env/  → torch, torchaudio (CUDA)
+#   shared-venv/  → faster-whisper, ctranslate2, silero-vad, onnxruntime, …
+#
+# 此处用代码直接注入 sys.path，不使用 .pth 文件，
+# 因为 uvicorn --reload 的 worker 进程可能不会重新读取 .pth。
+# ---------------------------------------------------------------------------
+
+_SHARED_SITE_PACKAGES = [
+    r"D:\Softwares Dev\pytorch-env\Lib\site-packages",
+    r"D:\AI\shared-venv\Lib\site-packages",
+]
+
+for _sp in _SHARED_SITE_PACKAGES:
+    if _sp not in sys.path:
+        sys.path.insert(0, _sp)
+        logger.info("已注入共享环境路径: %s", _sp)
+
+# 诊断：确认共享路径在 sys.path 中
+_shared_in_path = [p for p in sys.path if "shared-venv" in p or "pytorch-env" in p]
+logger.info("sys.path 共享条目: %s", _shared_in_path if _shared_in_path else "⚠ 未找到任何共享路径!")
 
 
 # ---------------------------------------------------------------------------
@@ -78,12 +110,84 @@ if _version_path.exists():
 templates = Jinja2Templates(directory="web/templates")
 
 
+# ---------------------------------------------------------------------------
+# 临时文件定时清理
+# ---------------------------------------------------------------------------
+
+
+def _cleanup_temp_files() -> int:
+    """清理 temp_dir 中超过 max_age_hours 的临时文件。
+
+    Returns:
+        删除的文件数。
+    """
+    temp_dir = settings.paths.temp_dir
+    if not temp_dir.exists():
+        return 0
+
+    max_age_seconds = settings.cleanup.max_age_hours * 3600
+    now = time.time()
+    deleted = 0
+
+    for entry in temp_dir.rglob("*"):
+        if not entry.is_file():
+            continue
+        try:
+            age = now - entry.stat().st_mtime
+            if age > max_age_seconds:
+                entry.unlink(missing_ok=True)
+                deleted += 1
+                logger.debug("清理过期临时文件: %s (%.1f 小时前)", entry.name, age / 3600)
+        except OSError:
+            pass
+
+    # 清理空的子目录
+    for entry in sorted(temp_dir.rglob("*"), reverse=True):
+        if entry.is_dir() and entry != temp_dir:
+            try:
+                entry.rmdir()  # 只删空目录
+            except OSError:
+                pass
+
+    if deleted > 0:
+        logger.info("临时文件清理完成: 已删除 %d 个文件", deleted)
+    return deleted
+
+
+async def _cleanup_loop(interval_hours: float) -> None:
+    """后台定时清理循环。"""
+    interval_seconds = interval_hours * 3600
+
+    # 启动后立即清理一次
+    logger.info("启动时清理过期临时文件...")
+    _cleanup_temp_files()
+
+    while True:
+        await asyncio.sleep(interval_seconds)
+        logger.debug("定时清理临时文件 (间隔=%.1fh, 最长保留=%.1fh)",
+                     settings.cleanup.interval_hours, settings.cleanup.max_age_hours)
+        _cleanup_temp_files()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """应用生命周期：启动时确保目录存在。"""
+    """应用生命周期：启动时确保目录存在 + 启停定时清理。"""
     settings.ensure_dirs()
     logger.info("所有目录就绪")
-    yield
+
+    # 启动定时清理后台任务
+    cleanup_task = asyncio.create_task(
+        _cleanup_loop(settings.cleanup.interval_hours)
+    )
+
+    try:
+        yield
+    finally:
+        cleanup_task.cancel()
+        try:
+            await cleanup_task
+        except asyncio.CancelledError:
+            logger.debug("定时清理任务已停止")
 
 
 app = FastAPI(
