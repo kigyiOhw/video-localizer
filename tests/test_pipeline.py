@@ -73,6 +73,9 @@ def _mock_pipeline_deps(probe_result=None, extract_result=None, mux_result=None)
     with (
         mock.patch.object(Path, "exists", return_value=True),
         mock.patch.object(Path, "is_file", return_value=True),
+        mock.patch.object(Path, "mkdir", return_value=None),
+        mock.patch.object(Path, "write_text", return_value=None),
+        mock.patch.object(Path, "unlink", return_value=None),
         mock.patch("processing.core.probe.probe_file",
                    return_value=probe_result or _make_probe_result()),
         mock.patch("processing.core.extract.extract_stream",
@@ -89,6 +92,7 @@ def _mock_pipeline_deps_no_audio():
     with (
         mock.patch.object(Path, "exists", return_value=True),
         mock.patch.object(Path, "is_file", return_value=True),
+        mock.patch.object(Path, "mkdir", return_value=None),
         mock.patch("processing.core.probe.probe_file",
                    return_value=_make_probe_result(audio_streams=[])),
     ):
