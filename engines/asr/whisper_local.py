@@ -106,6 +106,13 @@ class WhisperLocalEngine(ASREngine):
     def _get_model(self):
         """延迟加载模型（线程安全由 faster-whisper 内部处理）。"""
         if self._model is None:
+            # 诊断：打印 sys.path 中包含共享环境的部分
+            _shared_paths = [p for p in sys.path if "shared-venv" in p or "pytorch-env" in p]
+            logger.info(
+                "准备导入 faster_whisper… sys.path 共享条目: %s",
+                _shared_paths if _shared_paths else "⚠ 未找到!",
+            )
+
             from faster_whisper import WhisperModel
 
             logger.info(
@@ -123,6 +130,7 @@ class WhisperLocalEngine(ASREngine):
                 self._model_size,
                 device=self._device,
                 compute_type=compute,
+                local_files_only=True,
             )
             logger.info("模型加载完成")
         return self._model
