@@ -124,6 +124,8 @@ async def pipeline_run(
             asr_engine=asr_engine,
             translate_engine=translate_engine,
             source_language=source,
+            output_dir=settings.paths.media_output,
+            temp_dir=settings.paths.temp_dir / ".pipeline_tmp",
             ffmpeg_path=settings.ffmpeg.executable,
             ffprobe_path=settings.ffmpeg.ffprobe_executable,
             overwrite=True,
@@ -147,8 +149,12 @@ async def pipeline_run(
         "total_segments": len(result.translated_segments),
         "srt_original": result.srt_original,
         "srt_translated": result.srt_translated,
+        "srt_original_path": str(result.srt_original_path) if result.srt_original_path else None,
+        "srt_translated_path": str(result.srt_translated_path) if result.srt_translated_path else None,
         "segments": result.translated_segments,
         "download_url": f"/api/subtitle/download?path={result.output_path.as_posix()}",
+        "download_srt_original": f"/api/subtitle/download?path={result.srt_original_path.as_posix()}" if result.srt_original_path else None,
+        "download_srt_translated": f"/api/subtitle/download?path={result.srt_translated_path.as_posix()}" if result.srt_translated_path else None,
     }
 
     is_htmx = request.headers.get("hx-request", "").lower() == "true"
@@ -246,6 +252,8 @@ async def _sse_generator(
                 asr_engine=asr_engine,
                 translate_engine=translate_engine,
                 source_language=source_language,
+                output_dir=settings.paths.media_output,
+                temp_dir=settings.paths.temp_dir / ".pipeline_tmp",
                 ffmpeg_path=settings.ffmpeg.executable,
                 ffprobe_path=settings.ffmpeg.ffprobe_executable,
                 overwrite=True,

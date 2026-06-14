@@ -67,6 +67,7 @@ def run_full_pipeline(
     translate_engine: TranslateEngine,
     source_language: str = "",
     output_dir: Path | None = None,
+    temp_dir: Path | None = None,
     ffmpeg_path: str = "ffmpeg",
     ffprobe_path: str = "ffprobe",
     container: str = "mkv",
@@ -133,7 +134,8 @@ def run_full_pipeline(
     logger.info("阶段 2/4: 提取音轨")
     from processing.core.extract import ExtractError, extract_stream
 
-    temp_dir = _temp_dir(video_path)
+    if temp_dir is None:
+        temp_dir = _temp_dir(video_path)
     temp_dir.mkdir(parents=True, exist_ok=True)
 
     try:
@@ -282,6 +284,7 @@ def run_full_pipeline_stream(
     translate_engine: TranslateEngine,
     source_language: str = "",
     output_dir: Path | None = None,
+    temp_dir: Path | None = None,
     ffmpeg_path: str = "ffmpeg",
     ffprobe_path: str = "ffprobe",
     container: str = "mkv",
@@ -338,7 +341,8 @@ def run_full_pipeline_stream(
 
     from processing.core.extract import ExtractError, extract_stream
 
-    temp_dir = _temp_dir(video_path)
+    if temp_dir is None:
+        temp_dir = _temp_dir(video_path)
     temp_dir.mkdir(parents=True, exist_ok=True)
 
     try:
@@ -522,7 +526,10 @@ def _evt(event: str, data: dict[str, Any]) -> dict[str, Any]:
 
 
 def _temp_dir(video_path: Path) -> Path:
-    """获取临时目录（视频同级 output/.pipeline_tmp）。"""
+    """获取临时目录的回退路径（仅当调用方未传入 temp_dir 时使用）。
+
+    应优先通过函数的 temp_dir 参数传入配置的临时目录。
+    """
     return video_path.parent / "output" / ".pipeline_tmp"
 
 
