@@ -42,8 +42,10 @@ class PipelineResult:
     video_path: Path
     output_path: Path                # 最终 MKV 文件
     output_size: int                 # 输出文件大小（字节）
-    srt_original: str                # ASR 产出的原文 SRT
-    srt_translated: str              # 翻译后的 SRT
+    srt_original: str                # ASR 产出的原文 SRT 内容
+    srt_translated: str              # 翻译后的 SRT 内容
+    srt_original_path: Path | None = None  # 原文 SRT 文件路径（暂存）
+    srt_translated_path: Path | None = None  # 译文 SRT 文件路径（暂存）
     asr_segments: list[dict[str, Any]] = field(default_factory=list)
     translated_segments: list[dict[str, Any]] = field(default_factory=list)
     source_language: str = ""        # 检测到的源语言
@@ -194,15 +196,20 @@ def run_full_pipeline(
     logger.info("封装: 将译文字幕嵌入 %s", video_path.name)
     from processing.core.mux import MuxError, add_subtitle
 
-    # 译文 SRT 写入临时文件
-    srt_temp = temp_dir / f"{video_path.stem}_translated.srt"
-    srt_temp.write_text(srt_translated, encoding="utf-8")
-    temp_files.append(srt_temp)
-
     # 输出路径
     if output_dir is None:
         output_dir = video_path.parent / "output"
     output_dir.mkdir(parents=True, exist_ok=True)
+
+    # ── 暂存 SRT 到输出目录（方便后续复用，避免重复 ASR + 翻译）──
+    srt_original_path = output_dir / f"{video_path.stem}_original.srt"
+    srt_original_path.write_text(srt_original, encoding="utf-8")
+    srt_translated_path = output_dir / f"{video_path.stem}_translated.srt"
+    srt_translated_path.write_text(srt_translated, encoding="utf-8")
+    logger.info("SRT 已暂存: %s, %s", srt_original_path.name, srt_translated_path.name)
+
+    # 译文 SRT 作为封装输入
+    srt_temp = srt_translated_path
     output_path = output_dir / f"{video_path.stem}_subtitled.{container}"
 
     try:
@@ -240,6 +247,8 @@ def run_full_pipeline(
         output_size=mux_result.output_size,
         srt_original=srt_original,
         srt_translated=srt_translated,
+        srt_original_path=srt_original_path,
+        srt_translated_path=srt_translated_path,
         asr_segments=[
             {"start": s.start, "end": s.end, "text": s.text, "confidence": s.confidence}
             for s in asr_segments
@@ -448,13 +457,19 @@ def run_full_pipeline_stream(
 
     from processing.core.mux import MuxError, add_subtitle
 
-    srt_temp = temp_dir / f"{video_path.stem}_translated.srt"
-    srt_temp.write_text(srt_translated, encoding="utf-8")
-    temp_files.append(srt_temp)
-
     if output_dir is None:
         output_dir = video_path.parent / "output"
     output_dir.mkdir(parents=True, exist_ok=True)
+
+    # ── 暂存 SRT 到输出目录（方便后续复用，避免重复 ASR + 翻译）──
+    srt_original_path = output_dir / f"{video_path.stem}_original.srt"
+    srt_original_path.write_text(srt_original, encoding="utf-8")
+    srt_translated_path = output_dir / f"{video_path.stem}_translated.srt"
+    srt_translated_path.write_text(srt_translated, encoding="utf-8")
+    logger.info("SRT 已暂存: %s, %s", srt_original_path.name, srt_translated_path.name)
+
+    # 译文 SRT 作为封装输入（用暂存文件，无需额外临时文件）
+    srt_temp = srt_translated_path
     output_path = output_dir / f"{video_path.stem}_subtitled.{container}"
 
     try:
@@ -487,8 +502,12 @@ def run_full_pipeline_stream(
         "total_segments": len(all_translated),
         "srt_original": srt_original,
         "srt_translated": srt_translated,
+        "srt_original_path": str(srt_original_path) if srt_original_path else None,
+        "srt_translated_path": str(srt_translated_path) if srt_translated_path else None,
         "segments": all_translated,
         "download_url": f"/api/subtitle/download?path={output_path.as_posix()}",
+        "download_srt_original": f"/api/subtitle/download?path={srt_original_path.as_posix()}" if srt_original_path else None,
+        "download_srt_translated": f"/api/subtitle/download?path={srt_translated_path.as_posix()}" if srt_translated_path else None,
     })
 
 
