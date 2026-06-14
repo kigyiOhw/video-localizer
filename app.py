@@ -221,6 +221,24 @@ async def index(request: Request):
     })
 
 
+@app.get("/tools")
+async def tools_page(request: Request):
+    """媒体工具 hub 页面。"""
+    logger.debug("GET /tools")
+    return templates.TemplateResponse(request, "tools.html", {
+        "version": __version__,
+    })
+
+
+@app.get("/workshop")
+async def workshop_page(request: Request):
+    """AI 工坊 hub 页面。"""
+    logger.debug("GET /workshop")
+    return templates.TemplateResponse(request, "workshop.html", {
+        "version": __version__,
+    })
+
+
 @app.get("/probe")
 async def probe_page(request: Request):
     """流探测页面。"""
